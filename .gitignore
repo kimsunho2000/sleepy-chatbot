@@ -218,3 +218,27 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# =====================================
+# Sleepy RAG - React / Node.js
+# =====================================
+
+node_modules/
+.vite/
+*.tsbuildinfo
+.eslintcache
+
+# =====================================
+# Environment Variables & Secrets
+# =====================================
+
+.env
+.env.*
+!.env.example
+
+# =====================================
+# Local development files
+# =====================================
+
+.DS_Store
+Thumbs.db
