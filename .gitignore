@@ -150,7 +150,6 @@ activemq-data/
 *.sage.py
 
 # Environments
-.env
 .envrc
 .venv
 env/
@@ -242,3 +241,23 @@ node_modules/
 
 .DS_Store
 Thumbs.db
+
+# =====================================
+# Local services / deploy
+# =====================================
+
+qdrant_storage/
+.vercel/
+
+# =====================================
+# Team-shared files (shared outside the repo)
+# =====================================
+
+docs/
+AGENTS.md
+CONVENTION.md
+CLAUDE.md
+
+# Local RAG index / eval outputs
+.qdrant/
+eval/results/

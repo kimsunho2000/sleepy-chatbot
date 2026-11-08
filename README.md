@@ -19,13 +19,16 @@ Sleepy 기업 과제를 위한 RAG(Retrieval-Augmented Generation) 기반 AI 고
 
 기술 구성
 
-영역| 현재 상태
-Frontend| 기술 선정 전
-Backend| 기술 선정 전
-AI / LLM| 구체 모델 선정 전
-RAG 검색| 검색 알고리즘 비교·검토
-Vector DB| 전용 Vector DB 사용 결정, 제품 미선정
-배포 환경| 미확정
+| 영역 | 기술 | 상태 |
+|---|---|---|
+| Frontend | React | 확정 |
+| Backend | FastAPI (Python), Layered Architecture | 확정 |
+| RAG 프레임워크 | LangChain | 확정 |
+| Vector DB | Qdrant | 확정 |
+| 임베딩 | OpenAI Embeddings API | 확정 (모델 검토 중) |
+| LLM | OpenAI GPT | 확정 (모델 검토 중) |
+| RAG 검색 | 검색 방식·답변 판단 방식 | 비교·검토 중 |
+| 배포 | Frontend: Vercel / Backend: 미정 | Frontend 검토 중 |
 
 기술 선정과 변경은 팀 논의 및 검증 결과를 기준으로 기록합니다.
 
@@ -38,9 +41,9 @@ Vector DB| 전용 Vector DB 사용 결정, 제품 미선정
 협업 방법 (초안)
 
 - 개발 작업은 GitHub Issue 등을 활용하여 관리합니다.
-- 기능 개발은 별도 브랜치에서 진행하는 방식을 검토합니다.
-- 주요 코드 변경은 Pull Request를 통해 검토하는 방식을 검토합니다.
-- 팀의 기술 선정 및 역할 분담 기준은 별도 협의 후 확정합니다.
+- 기능 개발은 `type/작업내용` 브랜치에서 진행하고, Pull Request로 `main`에 반영합니다.
+- 커밋 메시지는 Conventional Commits 형식(`type(scope): 요약`)을 따릅니다.
+- 세부 규칙은 팀에 공유된 `CONVENTION.md`를 따릅니다.
 
 프로젝트 실행 방법
 
