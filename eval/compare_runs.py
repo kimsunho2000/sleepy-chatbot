@@ -2,6 +2,7 @@
 
 결과 파일에 저장된 기대값이 아니라 지금의 평가 세트 라벨로 다시 채점한다.
 라벨을 고친 뒤에도 예전 결과를 같은 기준으로 비교할 수 있게 하기 위해서다.
+LLM 판단은 실행마다 조금씩 달라지므로 같은 설정을 여러 번 돌려 평균과 문항별 일관성을 본다.
 
 사용법 (backend/ 에서):
     uv run python ../eval/compare_runs.py \\
@@ -16,7 +17,7 @@ import statistics
 from pathlib import Path
 
 from common import DEFAULT_DATASET, load_dataset
-from metrics import e2e_metrics
+from metrics import e2e_metrics, retrieval_hit
 
 SHOWN = [
     ("mode_accuracy", "정확도"),
@@ -27,24 +28,58 @@ SHOWN = [
     ("retrieval_hit_rate", "검색 적중"),
 ]
 
+Runs = list[list[dict]]  # 결과 파일(회차)마다 행 목록
 
-def load_group(pattern: str, labels: dict[str, dict]) -> list[list[dict]]:
-    """패턴에 맞는 결과 파일마다 행 목록을 돌려준다. 기대값은 현재 평가 세트로 덮어쓴다."""
+
+def load_group(pattern: str, labels: dict[str, dict]) -> Runs:
+    """패턴에 맞는 결과 파일을 읽고, 기대값은 현재 평가 세트 라벨로 덮어쓴다."""
     runs = []
     for path in sorted(glob.glob(pattern)):
         if not path.endswith(".json"):
             continue
         rows = json.loads(Path(path).read_text(encoding="utf-8"))["rows"]
-        rows = [{**r, **labels[r["id"]]} for r in rows if r["id"] in labels]
-        runs.append(rows)
+        runs.append([{**r, **labels[r["id"]]} for r in rows if r["id"] in labels])
     return runs
 
 
-def fmt(values: list[float | None]) -> str:
+def mean_percent(values: list[float | None]) -> str:
     present = [v for v in values if v is not None]
-    if not present:
-        return "-"
-    return f"{statistics.mean(present):.1%}"
+    return f"{statistics.mean(present):.1%}" if present else "-"
+
+
+def print_summary(groups: dict[str, Runs]) -> None:
+    header = f"{'설정':12s} {'회차':>4s} " + " ".join(f"{label:>14s}" for _, label in SHOWN)
+    print(header + f" {'응답(초)':>8s}")
+    for name, runs in groups.items():
+        if not runs:
+            print(f"{name:12s} 결과 파일 없음")
+            continue
+        metrics = [e2e_metrics(rows) for rows in runs]
+        cells = " ".join(f"{mean_percent([m[key] for m in metrics]):>14s}" for key, _ in SHOWN)
+        latency = statistics.mean(m["latency_avg_ms"] for m in metrics) / 1000
+        print(f"{name:12s} {len(runs):>4d} {cells} {latency:>8.2f}")
+
+
+def print_failures(items: list[dict], groups: dict[str, Runs]) -> None:
+    """한 번이라도 틀린 문항만, 설정마다 맞은 횟수와 실제 판단을 보여 준다."""
+    print("\n하나라도 틀린 문항 (맞은 횟수/회차, 검색 후보에 정답 FAQ가 있던 횟수)")
+    for item in items:
+        lines = []
+        has_wrong = False
+        for name, runs in groups.items():
+            rows = [r for run in runs for r in run if r["id"] == item["id"]]
+            if not rows:
+                continue
+            correct = sum(r["mode"] == r["expected_mode"] for r in rows)
+            has_wrong |= correct < len(rows)
+            checked = [r for r in rows if r["expected_faq_ids"] and r.get("retrieved_ids")]
+            hit = f" 검색{sum(map(retrieval_hit, checked))}/{len(checked)}" if checked else ""
+            modes = ",".join(r["mode"] for r in rows)
+            lines.append(f"{name} {correct}/{len(rows)}{hit} [{modes}]")
+        if has_wrong:
+            print(f"  {item['id']} (정답 {item['expected_mode']}) {item['question'][:30]}")
+            for line in lines:
+                print(f"      {line}")
 
 
 def main() -> None:
@@ -57,48 +92,14 @@ def main() -> None:
     labels = {
         i["id"]: {k: i[k] for k in ("expected_mode", "expected_faq_ids", "question")} for i in items
     }
-
-    groups: dict[str, list[list[dict]]] = {}
+    groups = {}
     for spec in args.group:
         name, pattern = spec.split("=", 1)
         groups[name] = load_group(pattern, labels)
 
     print(f"평가 세트: {args.dataset} ({len(items)}문항)\n")
-    header = f"{'설정':12s} {'회차':>4s} " + " ".join(f"{label:>14s}" for _, label in SHOWN)
-    print(header + f" {'응답(초)':>8s}")
-    for name, runs in groups.items():
-        if not runs:
-            print(f"{name:12s} 결과 파일 없음")
-            continue
-        metrics = [e2e_metrics(rows) for rows in runs]
-        cells = " ".join(f"{fmt([m[key] for m in metrics]):>14s}" for key, _ in SHOWN)
-        latency = statistics.mean(m["latency_avg_ms"] for m in metrics) / 1000
-        print(f"{name:12s} {len(runs):>4d} {cells} {latency:>8.2f}")
-
-    # 문항별 일관성: 한 번이라도 틀린 문항만, 설정마다 "맞은 횟수/회차"와 실제 판단
-    print("\n하나라도 틀린 문항 (맞은 횟수/회차, 검색 후보에 정답 FAQ가 있던 횟수)")
-    for item in items:
-        qid = item["id"]
-        cells = []
-        wrong = False
-        for name, runs in groups.items():
-            rows = [r for rows in runs for r in rows if r["id"] == qid]
-            if not rows:
-                continue
-            ok = sum(r["mode"] == r["expected_mode"] for r in rows)
-            wrong |= ok < len(rows)
-            hits = [
-                any(i in r["expected_faq_ids"] for i in r["retrieved_ids"])
-                for r in rows
-                if r["expected_faq_ids"] and r.get("retrieved_ids")
-            ]
-            hit = f" 검색{sum(hits)}/{len(hits)}" if hits else ""
-            modes = ",".join(r["mode"] for r in rows)
-            cells.append(f"{name} {ok}/{len(rows)}{hit} [{modes}]")
-        if wrong:
-            print(f"  {qid} (정답 {item['expected_mode']}) {item['question'][:30]}")
-            for cell in cells:
-                print(f"      {cell}")
+    print_summary(groups)
+    print_failures(items, groups)
 
 
 if __name__ == "__main__":

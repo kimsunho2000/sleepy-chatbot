@@ -20,6 +20,8 @@ from pathlib import Path
 
 from common import close_impl, load_impl, load_run_info
 
+from rag.schemas import RagSystem
+
 HTML_PATH = Path(__file__).resolve().parent / "playground.html"
 MAX_QUESTION_LEN = 500
 MAX_HISTORY = 5  # 화면이 보내는 이전 질문 개수 상한 (실제로 몇 개를 쓸지는 설정 history_turns)
@@ -27,7 +29,9 @@ MAX_HISTORY = 5  # 화면이 보내는 이전 질문 개수 상한 (실제로 �
 logger = logging.getLogger("playground")
 
 
-def make_handler(system, loop: asyncio.AbstractEventLoop, info: dict) -> type:
+def make_handler(
+    system: RagSystem, loop: asyncio.AbstractEventLoop, info: dict
+) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def _send(self, status: int, body: bytes, content_type: str) -> None:
             self.send_response(status)

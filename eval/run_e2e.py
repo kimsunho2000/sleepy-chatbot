@@ -9,18 +9,45 @@ import asyncio
 import csv
 import json
 from datetime import datetime
+from pathlib import Path
 
-from common import DEFAULT_DATASET, RESULTS_DIR, close_impl, load_dataset, load_impl, load_run_info
+from common import (
+    DEFAULT_DATASET,
+    RESULTS_DIR,
+    close_impl,
+    load_dataset,
+    load_impl,
+    load_run_info,
+    previous_questions,
+)
 from metrics import e2e_metrics
 
+from rag.schemas import RagSystem
+
 GRADES = "정답 / 부분 정답 / 오답 / 근거 없는 답변"
+CSV_COLUMNS = [
+    "run",
+    "embedding_model",
+    "llm_model",
+    "id",
+    "type",
+    "question",
+    "expected_mode",
+    "mode",
+    "answer",
+    "sources",
+    "retrieved",
+    "reason",
+    "grade",  # 사람이 채점할 칸
+    "note",
+]
 
 
-async def run(system, dataset: list[dict]) -> list[dict]:
+async def run(system: RagSystem, dataset: list[dict]) -> list[dict]:
     rows = []
     for item in dataset:
-        # 후속 질문 문항은 앞선 고객 질문만 넘긴다 (프론트엔드가 보내는 것과 같은 형태)
-        history = [h["content"] for h in item.get("history", []) if h["role"] == "user"]
+        history = previous_questions(item)
+        # 이전 질문을 받지 않는 구현도 평가할 수 있도록, 이전 질문이 있을 때만 넘긴다
         if history:
             response = await system.aanswer(item["question"], history=history)
         else:
@@ -29,66 +56,46 @@ async def run(system, dataset: list[dict]) -> list[dict]:
     return rows
 
 
-def save(rows: list[dict], metrics: dict, info: dict, name: str) -> tuple[str, str]:
+def csv_row(row: dict, info: dict) -> list[str]:
+    sources = ", ".join(f"{s['faq_id']}({s['score']:.2f})" for s in row["sources"])
+    retrieved = ", ".join(
+        f"{faq_id}({score:.2f})"
+        for faq_id, score in zip(
+            row.get("retrieved_ids", []), row.get("retrieved_scores", []), strict=False
+        )
+    )
+    return [
+        info["run"],
+        info["embedding_model"],
+        info["llm_model"],
+        row["id"],
+        row["type"],
+        row["question"],
+        row["expected_mode"],
+        row["mode"],
+        row["answer"],
+        sources,
+        retrieved,
+        row.get("reason", ""),
+        "",
+        "",
+    ]
+
+
+def save(rows: list[dict], metrics: dict, info: dict, name: str) -> tuple[Path, Path]:
     RESULTS_DIR.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d_%H%M")
     json_path = RESULTS_DIR / f"{name}_{stamp}.json"
     csv_path = RESULTS_DIR / f"{name}_{stamp}.csv"
 
-    json_path.write_text(
-        json.dumps(
-            {"run_info": info, "metrics": metrics, "rows": rows}, ensure_ascii=False, indent=2
-        ),
-        encoding="utf-8",
-    )
+    result = {"run_info": info, "metrics": metrics, "rows": rows}
+    json_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     # Excel에서 한글이 깨지지 않도록 utf-8-sig
     with csv_path.open("w", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(
-            [
-                "run",
-                "embedding_model",
-                "llm_model",
-                "id",
-                "type",
-                "question",
-                "expected_mode",
-                "mode",
-                "answer",
-                "sources",
-                "retrieved",
-                "reason",
-                "grade",
-                "note",
-            ]
-        )
-        for r in rows:
-            sources = ", ".join(f"{s['faq_id']}({s['score']:.2f})" for s in r["sources"])
-            retrieved = ", ".join(
-                f"{i}({s:.2f})"
-                for i, s in zip(
-                    r.get("retrieved_ids", []), r.get("retrieved_scores", []), strict=False
-                )
-            )
-            writer.writerow(
-                [
-                    info["run"],
-                    info["embedding_model"],
-                    info["llm_model"],
-                    r["id"],
-                    r["type"],
-                    r["question"],
-                    r["expected_mode"],
-                    r["mode"],
-                    r["answer"],
-                    sources,
-                    retrieved,
-                    r.get("reason", ""),
-                    "",
-                    "",
-                ]
-            )
-    return str(json_path), str(csv_path)
+        writer.writerow(CSV_COLUMNS)
+        writer.writerows(csv_row(r, info) for r in rows)
+    return json_path, csv_path
 
 
 def main() -> None:
@@ -96,19 +103,14 @@ def main() -> None:
     parser.add_argument("--impl", default="rag.pipeline:create")
     parser.add_argument("--config", required=True)
     parser.add_argument("--name", default=None, help="결과 파일 이름 (기본: 설정 파일 이름)")
-    parser.add_argument(
-        "--dataset",
-        default=str(DEFAULT_DATASET),
-        help="평가 세트 jsonl (기본: eval/dev_dataset.jsonl)",
-    )
+    parser.add_argument("--dataset", default=str(DEFAULT_DATASET), help="평가 세트 jsonl")
     parser.add_argument("--input-price", type=float, default=0.0, help="입력 100만 토큰당 USD")
     parser.add_argument("--output-price", type=float, default=0.0, help="출력 100만 토큰당 USD")
     args = parser.parse_args()
 
-    dataset_path = args.dataset
-    info = load_run_info(args.impl, args.config, dataset_path)
+    info = load_run_info(args.impl, args.config, args.dataset)
     print(f"[{info['run']}] 임베딩: {info['embedding_model']} / LLM: {info['llm_model']}")
-    dataset = load_dataset(dataset_path)
+    dataset = load_dataset(args.dataset)
     system = load_impl(args.impl, args.config)
     try:
         rows = asyncio.run(run(system, dataset))
@@ -116,8 +118,7 @@ def main() -> None:
         close_impl(system)
 
     metrics = e2e_metrics(rows, args.input_price, args.output_price)
-    name = args.name or args.config.replace("\\", "/").rsplit("/", 1)[-1].removesuffix(".yaml")
-    json_path, csv_path = save(rows, metrics, info, name)
+    json_path, csv_path = save(rows, metrics, info, args.name or Path(args.config).stem)
 
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
     print(f"결과: {json_path}")

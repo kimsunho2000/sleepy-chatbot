@@ -102,7 +102,7 @@ class RagPipeline:
         self.prompts = fill_contact(load_prompts(gen.prompt), gen.contact_email)
         self.retriever = Retriever(config, settings)
 
-        options: dict = {}
+        options: dict[str, float | str] = {}
         if gen.temperature is not None:
             options["temperature"] = gen.temperature
         if gen.reasoning_effort is not None:
