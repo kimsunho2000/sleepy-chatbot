@@ -1,0 +1,23 @@
+# 슬리비 FAQ 챗봇 RAG 설정
+name: default
+owner: ""
+description: "임베딩 3개 + 키워드 1개로 FAQ 4개를 찾고, LLM 1회로 판단과 답변을 함께 만든다. 고객의 직전 질문 1개를 후속 질문 이해에 쓴다."
+
+data_path: data/faq.json
+
+embedding:
+  model: text-embedding-3-large
+
+retrieval:
+  top_k: 4
+  keyword_slots: 1
+  history_turns: 1
+
+decision:
+  min_score: 0.15
+  verify_numbers: true
+
+generation:
+  llm_model: gpt-6-luna
+  prompt: default
+  contact_email: sleeby00@gmail.com
