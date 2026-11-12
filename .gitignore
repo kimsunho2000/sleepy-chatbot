@@ -257,6 +257,7 @@ docs/
 AGENTS.md
 CONVENTION.md
 CLAUDE.md
+ADMIN.md
 
 # Local RAG index / eval outputs
 .qdrant/
