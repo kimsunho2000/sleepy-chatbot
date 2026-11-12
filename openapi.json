@@ -1,0 +1,2908 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sleeby 챗봇 · 관리자 API",
+    "version": "0.1.0-design",
+    "description": "**구현 전 설계 명세 — 실행 가능한 API 서버가 아닙니다.**\n\nSupabase PostgreSQL을 업무 DB로 사용 예정. 고객에게 출처를 제공하지 않고 관리자 로그에서만 조회합니다. FAQ CRUD·메일 발송·실시간 상담·스트리밍은 범위 밖입니다.\n\nUTC 시간, from 포함/to 미포함. 입력 제한과 요청 제한 수치는 설계 제안입니다. 토큰 방식·만료·보존 정책은 구현 시 확정합니다. 문의 중복 충돌과 문의 대화의 완료 시각 경계는 재검토에서 보완했습니다.\n\n이 페이지는 문서만 배포하며 Try it out을 제공하지 않습니다."
+  },
+  "tags": [
+    {
+      "name": "챗봇"
+    },
+    {
+      "name": "고객 문의"
+    },
+    {
+      "name": "관리자 인증"
+    },
+    {
+      "name": "문의 관리"
+    },
+    {
+      "name": "질문 로그"
+    },
+    {
+      "name": "답 못 한 질문"
+    },
+    {
+      "name": "대시보드"
+    }
+  ],
+  "paths": {
+    "/api/admin/tokens": {
+      "post": {
+        "tags": [
+          "관리자 인증"
+        ],
+        "summary": "관리자 로그인",
+        "operationId": "post_admin_tokens",
+        "description": "환경변수 관리자 계정 1개. 만료 12시간은 제안값. 로그아웃은 프론트에서 토큰 제거(즉시 서버 폐기 아님).",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/tokens/current": {
+      "get": {
+        "tags": [
+          "관리자 인증"
+        ],
+        "summary": "관리자 토큰 확인",
+        "operationId": "get_admin_tokens_current",
+        "description": "구현 전 설계 명세입니다.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminIdentity"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chats": {
+      "post": {
+        "tags": [
+          "챗봇"
+        ],
+        "summary": "대화 시작·초기화",
+        "operationId": "post_chats",
+        "description": "새 대화와 토큰 발급. 초기화는 이전 기록 삭제가 아니다.",
+        "security": [],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chats/{chat_id}/turns": {
+      "post": {
+        "tags": [
+          "챗봇"
+        ],
+        "summary": "RAG 질문·답변",
+        "operationId": "post_chats_chat_id_turns",
+        "description": "비스트리밍. 서버는 동일 대화의 완료된 parent 체인에서 이전 고객 질문만 추출해 aanswer(question, history)를 호출한다. 재질문·수정은 같은 부모를 사용한 새 turn. 고객 응답에 출처·판단 사유·토큰·비용 없음. show_contact는 RAG 결과 유지. RAG 실패는 503과 turn_id이며 unknown으로 바꾸지 않는다.",
+        "security": [
+          {
+            "ChatBearer": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TurnRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chats/{chat_id}/turns/{turn_id}/feedback": {
+      "put": {
+        "tags": [
+          "챗봇"
+        ],
+        "summary": "피드백 등록·교체",
+        "operationId": "put_chats_chat_id_turns_turn_id_feedback",
+        "description": "동일 대화의 완료된 turn만 가능. up에는 reason을 받지 않는다.",
+        "security": [
+          {
+            "ChatBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Feedback"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "turn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "챗봇"
+        ],
+        "summary": "피드백 취소",
+        "operationId": "delete_chats_chat_id_turns_turn_id_feedback",
+        "description": "구현 전 설계 명세입니다.",
+        "security": [
+          {
+            "ChatBearer": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "성공 (본문 없음)"
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "chat_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "turn_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/inquiries": {
+      "post": {
+        "tags": [
+          "고객 문의"
+        ],
+        "summary": "문의 접수",
+        "operationId": "post_inquiries",
+        "description": "chat_id가 있으면 해당 대화 Bearer 토큰 필수(조건부 인증). uncertain_answer_card는 chat_id와 show_contact=true인 완료 trigger 필수, agent_request는 chat_id 필수. trigger는 같은 대화여야 한다. 직접 문의는 대화 없이 가능. 대화가 있으면 문의 접수 이전에 완료·저장된 기록을 함께 전달하며 폼에 안내한다. 같은 request_id·같은 본문은 최초 결과 재사용; 다른 본문이면 409. 재요청도 소유권을 먼저 검사하고 개인정보를 반환하지 않는다. 201은 이메일 발송이 아닌 접수 성공.",
+        "security": [
+          {},
+          {
+            "ChatBearer": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquiryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "request_id 재사용 시 본문 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InquiryRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/inquiries": {
+      "get": {
+        "tags": [
+          "문의 관리"
+        ],
+        "summary": "문의 목록",
+        "operationId": "get_admin_inquiries",
+        "description": "기본 최근 30일, created_at 내림차순·id 내림차순. unresolved=received+in_progress.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquirySummaryPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": ""
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": ""
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하는 UTC 경계. from < to."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하지 않는 UTC 경계. 두 값을 함께 생략하면 각 API 기본 기간."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unresolved",
+                "all",
+                "received",
+                "in_progress",
+                "completed"
+              ],
+              "default": "unresolved"
+            },
+            "description": ""
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "uncertain_answer_card",
+                "agent_request",
+                "direct_form"
+              ]
+            },
+            "description": ""
+          },
+          {
+            "name": "viewed",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            },
+            "description": ""
+          }
+        ]
+      }
+    },
+    "/api/admin/inquiry-counts": {
+      "get": {
+        "tags": [
+          "문의 관리"
+        ],
+        "summary": "문의 상태별 건수",
+        "operationId": "get_admin_inquiry_counts",
+        "description": "기간 생략 시 전체 기간. 목록 탭은 목록과 같은 기간·origin으로 호출. 상단 배지는 필터 없이 호출.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquiryCounts"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하는 UTC 경계. from < to."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하지 않는 UTC 경계. 두 값을 함께 생략하면 각 API 기본 기간."
+          },
+          {
+            "name": "origin",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "uncertain_answer_card",
+                "agent_request",
+                "direct_form"
+              ]
+            },
+            "description": ""
+          }
+        ]
+      }
+    },
+    "/api/admin/inquiries/{id}": {
+      "get": {
+        "tags": [
+          "문의 관리"
+        ],
+        "summary": "문의 상세·채팅 기록",
+        "operationId": "get_admin_inquiries_id",
+        "description": "조회로 읽음 상태를 바꾸지 않는다. 대화가 없으면 conversation=[]. 문의 접수 이전에 완료·저장된 turn만 오래된 순으로 제공한다. 이후 완료된 요청이 과거 문의 기록에 추가되지 않도록 created_at뿐 아니라 finished_at도 경계 검사한다.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquiryDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "문의 관리"
+        ],
+        "summary": "읽음·처리 상태·메모 변경",
+        "operationId": "patch_admin_inquiries_id",
+        "description": "최소 1개 필드. viewed=true는 최초 읽음 시각만 기록. completed 진입 시 완료 시각, 다른 상태로 변경 시 null. 같은 completed 재저장은 시각 유지. 마지막 저장 우선. 내부 메모는 고객 비공개.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InquiryDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InquiryPatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/turns": {
+      "get": {
+        "tags": [
+          "질문 로그"
+        ],
+        "summary": "질문 로그 목록",
+        "operationId": "get_admin_turns",
+        "description": "기본 최신순, chat_id 필터 시 오래된 순. 동률은 id로 정렬. 기간 생략 시 전체.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnSummaryPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": ""
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": ""
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하는 UTC 경계. from < to."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하지 않는 UTC 경계. 두 값을 함께 생략하면 각 API 기본 기간."
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "answer",
+                "partial",
+                "unknown",
+                "offtopic",
+                "greeting"
+              ]
+            },
+            "description": ""
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "completed",
+                "failed"
+              ]
+            },
+            "description": ""
+          },
+          {
+            "name": "rating",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "up",
+                "down",
+                "none"
+              ]
+            },
+            "description": ""
+          },
+          {
+            "name": "chat_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": ""
+          }
+        ]
+      }
+    },
+    "/api/admin/turns/{id}": {
+      "get": {
+        "tags": [
+          "질문 로그"
+        ],
+        "summary": "검색·판단·답변·비용 상세",
+        "operationId": "get_admin_turns_id",
+        "description": "검색 후보와 실제 근거는 분리한다. 점수는 확률이 아니다. 비용은 설정 단가에 따른 LLM 추정치이며 미측정은 null. 단가 변경 시 과거 추정치도 변한다.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TurnDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/api/admin/unanswered-groups": {
+      "get": {
+        "tags": [
+          "답 못 한 질문"
+        ],
+        "summary": "질문 묶음 목록",
+        "operationId": "get_admin_unanswered_groups",
+        "description": "최근 30일 기본. partial/unknown 또는 현재 down인 완료 turn의 합집합. 같은 turn은 한 번 집계하되 유형별 수는 겹칠 수 있다. 검색 1순위 source_id별 묶음은 의미 유사도 묶음이 아니다. 검색 없음은 none. 횟수 내림차순, group_key 오름차순.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionGroupPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": ""
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": ""
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하는 UTC 경계. from < to."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하지 않는 UTC 경계. 두 값을 함께 생략하면 각 API 기본 기간."
+          }
+        ]
+      }
+    },
+    "/api/admin/unanswered-groups/{group_key}": {
+      "get": {
+        "tags": [
+          "답 못 한 질문"
+        ],
+        "summary": "질문 묶음 상세",
+        "operationId": "get_admin_unanswered_groups_group_key",
+        "description": "목록과 같은 기간 기준. page/size는 turns에 적용. variants는 동일 질문별 횟수. 연결 문의는 trigger_turn_id 기준. 부정 평가 변경·취소는 다음 조회에 반영.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": ""
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "description": ""
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하는 UTC 경계. from < to."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하지 않는 UTC 경계. 두 값을 함께 생략하면 각 API 기본 기간."
+          }
+        ]
+      }
+    },
+    "/api/admin/dashboard": {
+      "get": {
+        "tags": [
+          "대시보드"
+        ],
+        "summary": "챗봇 운영 요약",
+        "operationId": "get_admin_dashboard",
+        "description": "기본 한국 날짜 오늘 포함 7일. uncertain_ratio=(partial+unknown)/(answer+partial+unknown). 긍정 비율=up/(up+down). 분모 0은 null. 일별 빈 날짜는 0, 합은 question_count. 문의 건수는 전체 기간. top_sources는 cited 출처 상위 5개 집계이며 FAQ 관리 기능이 아니다. 비용은 가정 단가의 LLM 비용만 포함하며 미측정은 0원으로 간주하지 않는다. 첫 글자 시간은 미지원.",
+        "security": [
+          {
+            "AdminBearer": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "토큰 없음·만료",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "리소스 없음 또는 대화 소유권 불일치",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력/연결 조건 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "요청 제한 초과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG 또는 DB 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하는 UTC 경계. from < to."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "포함하지 않는 UTC 경계. 두 값을 함께 생략하면 각 API 기본 기간."
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "fields"
+            ],
+            "additionalProperties": false
+          },
+          "turn_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "TokenRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 1
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "format": "password"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "AdminIdentity": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "display_name",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "token",
+          "display_name",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "ChatResponse": {
+        "type": "object",
+        "properties": {
+          "chat_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chat_token": {
+            "type": "string",
+            "description": "한 번 발급하는 대화 소유권 토큰. 로그에 남기지 않는다."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "chat_id",
+          "chat_token",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "TurnRequest": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "앞뒤 공백 제거 후 검증"
+          },
+          "parent_turn_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "additionalProperties": false
+      },
+      "FeedbackRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "up"
+                ]
+              }
+            },
+            "required": [
+              "rating"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "rating": {
+                "type": "string",
+                "enum": [
+                  "down"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "wrong",
+                  "insufficient",
+                  "irrelevant"
+                ]
+              }
+            },
+            "required": [
+              "rating"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Feedback": {
+        "type": "object",
+        "properties": {
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "wrong",
+              "insufficient",
+              "irrelevant"
+            ],
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "rating",
+          "reason",
+          "updated_at"
+        ],
+        "additionalProperties": false
+      },
+      "TurnResponse": {
+        "type": "object",
+        "properties": {
+          "turn_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chat_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "parent_turn_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "question": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "partial",
+              "unknown",
+              "offtopic",
+              "greeting"
+            ]
+          },
+          "answer": {
+            "type": "string"
+          },
+          "show_contact": {
+            "type": "boolean"
+          },
+          "feedback": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              }
+            ],
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "turn_id",
+          "chat_id",
+          "parent_turn_id",
+          "question",
+          "mode",
+          "answer",
+          "show_contact",
+          "feedback",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          },
+          "content": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "uncertain_answer_card",
+              "agent_request",
+              "direct_form"
+            ]
+          },
+          "chat_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "trigger_turn_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "content",
+          "origin",
+          "request_id"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryResponse": {
+        "type": "object",
+        "properties": {
+          "inquiry_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference_no": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "received",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "inquiry_id",
+          "reference_no",
+          "status",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "InquirySummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference_no": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "content_preview": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "uncertain_answer_card",
+              "agent_request",
+              "direct_form"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "received",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "is_unread": {
+            "type": "boolean"
+          },
+          "has_conversation": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "reference_no",
+          "name",
+          "content_preview",
+          "origin",
+          "status",
+          "is_unread",
+          "has_conversation",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "Source": {
+        "type": "object",
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "source_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "rank",
+          "source_id",
+          "title",
+          "score"
+        ],
+        "additionalProperties": false
+      },
+      "ConversationTurn": {
+        "type": "object",
+        "properties": {
+          "turn_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "partial",
+              "unknown",
+              "offtopic",
+              "greeting"
+            ],
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "nullable": true
+          },
+          "cited_sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          },
+          "is_trigger": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "turn_id",
+          "question",
+          "status",
+          "mode",
+          "answer",
+          "cited_sources",
+          "is_trigger",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference_no": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "content_preview": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "uncertain_answer_card",
+              "agent_request",
+              "direct_form"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "received",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "is_unread": {
+            "type": "boolean"
+          },
+          "has_conversation": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "content": {
+            "type": "string"
+          },
+          "internal_note": {
+            "type": "string"
+          },
+          "first_viewed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trigger_turn_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "conversation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConversationTurn"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "reference_no",
+          "name",
+          "content_preview",
+          "origin",
+          "status",
+          "is_unread",
+          "has_conversation",
+          "created_at",
+          "email",
+          "content",
+          "internal_note",
+          "first_viewed_at",
+          "completed_at",
+          "updated_at",
+          "trigger_turn_id",
+          "conversation"
+        ],
+        "additionalProperties": false
+      },
+      "InquiryPatch": {
+        "type": "object",
+        "properties": {
+          "viewed": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "received",
+              "in_progress",
+              "completed"
+            ]
+          },
+          "internal_note": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [],
+        "additionalProperties": false,
+        "minProperties": 1
+      },
+      "InquiryCounts": {
+        "type": "object",
+        "properties": {
+          "received": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "in_progress": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "completed": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unread": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "received",
+          "in_progress",
+          "completed",
+          "unresolved",
+          "unread",
+          "total"
+        ],
+        "additionalProperties": false
+      },
+      "TurnSummary": {
+        "type": "object",
+        "properties": {
+          "turn_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chat_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "partial",
+              "unknown",
+              "offtopic",
+              "greeting"
+            ],
+            "nullable": true
+          },
+          "latency_ms": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "turn_id",
+          "chat_id",
+          "question",
+          "status",
+          "mode",
+          "latency_ms",
+          "rating",
+          "created_at"
+        ],
+        "additionalProperties": false
+      },
+      "TurnDetail": {
+        "type": "object",
+        "properties": {
+          "turn_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "chat_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "question": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "failed"
+            ]
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "answer",
+              "partial",
+              "unknown",
+              "offtopic",
+              "greeting"
+            ],
+            "nullable": true
+          },
+          "latency_ms": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "rating": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ],
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "parent_turn_id": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "answer": {
+            "type": "string",
+            "nullable": true
+          },
+          "show_contact": {
+            "type": "boolean"
+          },
+          "retrieved_sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          },
+          "cited_sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Source"
+            }
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "nullable": true
+          },
+          "estimated_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "llm_model": {
+            "type": "string"
+          },
+          "config_name": {
+            "type": "string"
+          },
+          "feedback": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Feedback"
+              }
+            ],
+            "nullable": true
+          },
+          "inquiry_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "turn_id",
+          "chat_id",
+          "question",
+          "status",
+          "mode",
+          "latency_ms",
+          "rating",
+          "created_at",
+          "parent_turn_id",
+          "answer",
+          "show_contact",
+          "retrieved_sources",
+          "cited_sources",
+          "reason",
+          "error_code",
+          "prompt_tokens",
+          "completion_tokens",
+          "estimated_cost_usd",
+          "llm_model",
+          "config_name",
+          "feedback",
+          "inquiry_ids"
+        ],
+        "additionalProperties": false
+      },
+      "QuestionGroup": {
+        "type": "object",
+        "properties": {
+          "group_key": {
+            "type": "string"
+          },
+          "source_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "representative_question": {
+            "type": "string"
+          },
+          "occurrence_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unknown_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "partial_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "downvote_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inquiry_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        "required": [
+          "group_key",
+          "source_title",
+          "representative_question",
+          "occurrence_count",
+          "unknown_count",
+          "partial_count",
+          "downvote_count",
+          "last_seen_at",
+          "inquiry_ids"
+        ],
+        "additionalProperties": false
+      },
+      "InquirySummaryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InquirySummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total_count"
+        ],
+        "additionalProperties": false
+      },
+      "TurnSummaryPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TurnSummary"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total_count"
+        ],
+        "additionalProperties": false
+      },
+      "QuestionGroupPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuestionGroup"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "size",
+          "total_count"
+        ],
+        "additionalProperties": false
+      },
+      "GroupDetail": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/QuestionGroup"
+          },
+          "variants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "question",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "turns": {
+            "$ref": "#/components/schemas/TurnSummaryPage"
+          }
+        },
+        "required": [
+          "group",
+          "variants",
+          "turns"
+        ],
+        "additionalProperties": false
+      },
+      "Dashboard": {
+        "type": "object",
+        "properties": {
+          "question_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mode_counts": {
+            "type": "object",
+            "properties": {
+              "answer": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "partial": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "unknown": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "offtopic": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "greeting": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "answer",
+              "partial",
+              "unknown",
+              "offtopic",
+              "greeting"
+            ],
+            "additionalProperties": false
+          },
+          "failed_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "average_latency_ms": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "uncertain_ratio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "nullable": true
+          },
+          "feedback_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "positive_feedback_ratio": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "nullable": true
+          },
+          "estimated_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "average_cost_usd": {
+            "type": "number",
+            "minimum": 0,
+            "nullable": true
+          },
+          "unresolved_inquiry_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unread_inquiry_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "daily_questions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "date",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "top_sources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "required": [
+                "source_id",
+                "title",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "question_count",
+          "mode_counts",
+          "failed_count",
+          "average_latency_ms",
+          "uncertain_ratio",
+          "feedback_count",
+          "positive_feedback_ratio",
+          "estimated_cost_usd",
+          "average_cost_usd",
+          "unresolved_inquiry_count",
+          "unread_inquiry_count",
+          "daily_questions",
+          "top_sources"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "AdminBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "관리자 전용 토큰 (실제 토큰 입력 불필요)"
+      },
+      "ChatBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "해당 대화 생성 시 발급되는 소유권 토큰"
+      }
+    }
+  }
+}
