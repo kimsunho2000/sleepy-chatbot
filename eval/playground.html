@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
-    --user: #2f6fed; --answer: #1a7f4b; --partial: #b26a00; --unknown: #c0392b; --offtopic: #6b7280;
+    --user: #2f6fed; --answer: #1a7f4b; --partial: #b26a00; --unknown: #c0392b; --offtopic: #6b7280; --greeting: #7c4dff;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -69,7 +69,8 @@ document.getElementById("reset").addEventListener("click", () => {
   input.focus();
 });
 const MODE_COLOR = { answer: "var(--answer)", partial: "var(--partial)",
-  unknown: "var(--unknown)", offtopic: "var(--offtopic)" };
+  unknown: "var(--unknown)", offtopic: "var(--offtopic)",
+  greeting: "var(--greeting)" };
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
