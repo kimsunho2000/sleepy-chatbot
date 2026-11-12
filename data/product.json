@@ -1,0 +1,82 @@
+[
+  {
+    "faq_id": "P01",
+    "category": "제품 소개·기능",
+    "question": "슬리비는 어떤 제품인가요? 슬리비가 뭐예요?",
+    "answer": "SLEEBY는 약 없이 잠들기 전 휴식과 수면을 돕도록 만든 디지털 귀마개예요. 스마트폰이나 앱 없이 충전 케이스에서 꺼내 귀에 착용하면 바로 사용할 수 있어요.",
+    "source": "4.제품소개서_영문.pdf p1 Function and Usage",
+    "status": "confirmed",
+    "company_provided": true,
+    "support_required": false
+  },
+  {
+    "faq_id": "P02",
+    "category": "제품 소개·기능",
+    "question": "슬리비의 특징은 무엇인가요?",
+    "answer": "SLEEBY는 스마트폰이나 앱 연결이 필요 없는 단독형 기기예요. 귀마개가 직접 소리를 만들어 별도 재생 기기 없이도 일정한 소리를 들려주고, 가볍고 작아서 휴대하기 쉬워요.",
+    "source": "4.제품소개서_영문.pdf p2",
+    "status": "confirmed",
+    "company_provided": true,
+    "support_required": false
+  },
+  {
+    "faq_id": "P03",
+    "category": "제품 소개·기능",
+    "question": "슬리비는 어떤 사람에게 적합한가요?",
+    "answer": "SLEEBY는 바쁜 직장인, 학생, 이동이 잦은 분처럼 약이나 별도 기기에 의존하지 않고 언제 어디서나 휴식과 잠을 원하는 분들을 위해 만들어졌어요.",
+    "source": "4.제품소개서_영문.pdf p1 Marketing and Selling points",
+    "status": "confirmed",
+    "company_provided": true,
+    "support_required": false
+  },
+  {
+    "faq_id": "P04",
+    "category": "제품 소개·기능",
+    "question": "충전 케이스의 크기는 어느 정도인가요?",
+    "answer": "충전 케이스는 약 6.7 × 2.4 × 3.5cm 크기로, 들고 다니기 편하게 작게 만들어졌어요.",
+    "source": "4.제품소개서_영문.pdf p2",
+    "status": "confirmed",
+    "company_provided": true,
+    "support_required": false
+  },
+  {
+    "faq_id": "P05",
+    "category": "제품 소개·기능",
+    "question": "슬리비의 무게는 얼마인가요?",
+    "answer": "SLEEBY 귀마개는 한쪽 약 1.5g, 양쪽 합쳐 약 3g이에요.",
+    "source": "4.제품소개서_영문.pdf p1(1.5g)·p2(약 3g), 한쪽·양쪽 구분은 사용자 확인",
+    "status": "confirmed",
+    "company_provided": true,
+    "support_required": false
+  },
+  {
+    "faq_id": "P06",
+    "category": "회사 소개",
+    "question": "슬리비를 만든 회사는 어디인가요?",
+    "answer": "SLEEBY는 2024년 4월 설립된 서울의 디지털 헬스케어 스타트업 주식회사 슬리피(Sleepy Inc.)가 만들었어요. 서울대학교병원 마취통증의학과 교수가 이끄는 회사예요.",
+    "source": "4.제품소개서_영문.pdf p1 Company Description, p2",
+    "status": "confirmed",
+    "company_provided": true,
+    "support_required": false
+  },
+  {
+    "faq_id": "P07",
+    "category": "충전·배터리",
+    "question": "충전은 어떻게 하나요?",
+    "answer": "귀마개를 충전 케이스에 넣고, 충전 케이스에 USB-C 타입 케이블을 연결해 충전해 주세요.",
+    "source": "Sleeby_FAQ.md Q22·Q35 문장 조합 + 사용자 확인 (회사 FAQ 추가 요청 후보)",
+    "status": "confirmed",
+    "company_provided": false,
+    "support_required": false
+  },
+  {
+    "faq_id": "P08",
+    "category": "보관·관리",
+    "question": "충전 케이스는 어떻게 관리하나요?",
+    "answer": "충전 케이스는 습기가 많거나 온도가 높은 곳을 피해 보관해 주세요. 오래 사용하지 않을 때는 배터리가 완전히 방전된 상태로 오래 두지 않도록 가끔 충전해 주세요. 충전 단자에 먼지나 이물질이 묻었을 때는 충전 케이블을 분리한 뒤 마른 면봉이나 부드러운 마른 천으로 조심스럽게 닦고, 물이나 세척액이 단자 안으로 들어가지 않도록 주의해 주세요.",
+    "source": "Sleeby_FAQ.md Q85·Q86·Q87 문장 조합 (회사 FAQ 추가 요청 후보. Q86 충전 단자를 케이스 단자로 해석)",
+    "status": "confirmed",
+    "company_provided": false,
+    "support_required": false
+  }
+]
