@@ -30,6 +30,11 @@ class RetrievalConfig(BaseModel):
     # 고객의 이전 질문을 몇 개까지 검색과 판단에 쓸지. 0이면 이전 질문을 무시한다.
     # "케이스는요?" 같은 후속 질문을 이해하기 위해 쓴다.
     history_turns: int = Field(default=0, ge=0)
+    # 후속 질문일 때 '지금 질문'과 '이전 질문 + 지금 질문' 검색 결과를 합치는 방식.
+    # alternate: 번갈아 합친다. rrf: 순위 합산(Reciprocal Rank Fusion)으로 양쪽에 모두 나온 FAQ를 앞에 둔다
+    history_merge: Literal["alternate", "rrf"] = "alternate"
+    # 검색 전 용어 정리 사전 이름 (backend/rag/glossaries/{glossary}.yaml). 비우면 쓰지 않는다
+    glossary: str | None = None
 
     @model_validator(mode="after")
     def _check_slots(self) -> "RetrievalConfig":
@@ -66,10 +71,16 @@ class RagConfig(BaseModel):
     owner: str = ""
     description: str = ""
     data_path: str = "data/faq.json"
+    # FAQ와 같은 형식의 추가 데이터(제품 정보 등). FAQ와 한 컬렉션에 섞어 검색한다
+    extra_data_paths: list[str] = Field(default_factory=list)
     embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     retrieval: RetrievalConfig = Field(default_factory=RetrievalConfig)
     decision: DecisionConfig = Field(default_factory=DecisionConfig)
     generation: GenerationConfig
+
+    @property
+    def data_paths(self) -> list[str]:
+        return [self.data_path, *self.extra_data_paths]
 
     @property
     def qdrant_path(self) -> Path:

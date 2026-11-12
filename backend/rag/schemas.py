@@ -4,7 +4,8 @@ from typing import Literal, Protocol
 
 from pydantic import BaseModel, Field
 
-Mode = Literal["answer", "partial", "unknown", "offtopic"]
+# greeting: 인사·감사·챗봇 소개 요청. 프롬프트에 greeting_message가 있을 때만 나온다
+Mode = Literal["answer", "partial", "unknown", "offtopic", "greeting"]
 
 
 class FaqItem(BaseModel):

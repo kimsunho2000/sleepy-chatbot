@@ -18,7 +18,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams
 
 from rag.config import RagConfig, Settings, load_config, resolve_path
-from rag.data_loader import load_confirmed_faq
+from rag.data_loader import load_confirmed_items
 
 META_FILE = "index_meta.json"
 
@@ -29,7 +29,8 @@ def build_embeddings(config: RagConfig, settings: Settings) -> OpenAIEmbeddings:
 
 def index_signature(config: RagConfig) -> dict:
     """인덱스가 현재 데이터·임베딩 모델과 맞는지 확인하는 데 쓰는 값."""
-    data = resolve_path(config.data_path).read_bytes()
+    # 추가 데이터가 없으면 예전과 같은 값이 나오도록 파일 내용을 순서대로 이어 해시한다
+    data = b"".join(resolve_path(p).read_bytes() for p in config.data_paths)
     return {
         "data_sha256": hashlib.sha256(data).hexdigest(),
         "embedding_model": config.embedding.model,
@@ -37,7 +38,7 @@ def index_signature(config: RagConfig) -> dict:
 
 
 def build_index(config: RagConfig, settings: Settings) -> int:
-    items = load_confirmed_faq(config.data_path)
+    items = load_confirmed_items(config.data_paths)
     embeddings = build_embeddings(config, settings)
     texts = [f"{item.question}\n{item.answer}" for item in items]
     metadatas = [

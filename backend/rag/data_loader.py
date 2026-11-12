@@ -21,3 +21,13 @@ def load_faq(path: str | Path) -> list[FaqItem]:
 def load_confirmed_faq(path: str | Path) -> list[FaqItem]:
     """답변이 확정된 항목만 반환한다. 인덱싱 대상."""
     return [item for item in load_faq(path) if item.status == "confirmed" and item.answer.strip()]
+
+
+def load_confirmed_items(paths: list[str]) -> list[FaqItem]:
+    """여러 데이터 파일의 확정 항목을 합친다. ID는 파일을 통틀어 겹치면 안 된다."""
+    items = [item for path in paths for item in load_confirmed_faq(path)]
+    ids = [item.faq_id for item in items]
+    duplicates = {i for i in ids if ids.count(i) > 1}
+    if duplicates:
+        raise ValueError(f"파일 간 중복된 faq_id: {sorted(duplicates)}")
+    return items

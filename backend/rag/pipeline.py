@@ -1,6 +1,6 @@
 """RAG 파이프라인: 검색 → LLM 1회(판단 + 답변) → 결과 검사 → 숫자 검증.
 
-LLM은 구조화 출력 한 번으로 판단 이유, 판단(answer/partial/unknown/offtopic),
+LLM은 구조화 출력 한 번으로 판단 이유, 판단(answer/partial/unknown/offtopic, 선택적으로 greeting),
 근거 FAQ ID, 답변을 함께 돌려준다. 판단과 답변을 따로 부르면 비용과 지연이 두 배가 되기 때문이다.
 답변이 JSON 필드로 한 번에 오므로 스트리밍은 하지 않는다.
 """
@@ -20,6 +20,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from rag.config import RagConfig, Settings, load_config
+from rag.glossary import normalize
 from rag.retriever import Retriever
 from rag.schemas import Mode, RagResponse, Source
 
@@ -54,6 +55,14 @@ class LlmResult(BaseModel):
     )
     faq_ids: list[str] = Field(description="답변 근거로 쓸 FAQ ID. unknown, offtopic이면 빈 목록")
     answer: str = Field(description="고객에게 보여 줄 답변. unknown, offtopic이면 빈 문자열")
+
+
+class LlmResultWithGreeting(LlmResult):
+    """인사 모드를 쓰는 프롬프트용. 기존 프롬프트의 판단 범위는 바꾸지 않으려고 따로 둔다."""
+
+    verdict: Literal["answer", "partial", "unknown", "offtopic", "greeting"] = Field(
+        description="FAQ만으로 질문에 답할 수 있는지에 대한 판단. 인사·감사·챗봇 소개 요청이면 greeting"
+    )
 
 
 @dataclass
@@ -92,6 +101,23 @@ def merge_alternately(first: list[Source], second: list[Source], k: int) -> list
     return merged[:k]
 
 
+RRF_K = 60  # RRF 표준 상수. 순위 차이보다 '양쪽에 모두 나왔는지'가 점수를 좌우하게 한다
+
+
+def merge_rrf(first: list[Source], second: list[Source], k: int) -> list[Source]:
+    """두 검색 결과를 순위 합산으로 합친다. 양쪽에 모두 나온 FAQ가 앞에 온다.
+
+    번갈아 합치면 양쪽 모두에 나온 FAQ도 순서상 밀려 잘릴 수 있어서 둔다.
+    점수가 같으면 번갈아 합친 순서(지금 질문 쪽 우선)를 따른다.
+    """
+    scores: dict[str, float] = {}
+    for results in (first, second):
+        for rank, source in enumerate(results, start=1):
+            scores[source.faq_id] = scores.get(source.faq_id, 0.0) + 1 / (RRF_K + rank)
+    order = merge_alternately(first, second, len(first) + len(second))
+    return sorted(order, key=lambda s: -scores[s.faq_id])[:k]
+
+
 class RagPipeline:
     """팀 공통 계약(RagSystem) 구현."""
 
@@ -112,8 +138,10 @@ class RagPipeline:
             [("system", self.prompts["system"]), ("human", self.prompts["human"])]
         )
         # include_raw: 파싱 결과와 함께 원본 메시지(토큰 사용량)도 받는다
+        self.greeting_enabled = "greeting_message" in self.prompts
+        schema = LlmResultWithGreeting if self.greeting_enabled else LlmResult
         self.chain = prompt | llm.with_structured_output(
-            LlmResult, method="json_schema", strict=True, include_raw=True
+            schema, method="json_schema", strict=True, include_raw=True
         )
 
     # ---- 검색 ----
@@ -127,10 +155,16 @@ class RagPipeline:
         주제를 바꾼 질문은 지금 질문 단독 검색이 1순위를 지킨다.
         """
         k = self.config.retrieval.top_k
+        # 용어 사전은 검색에만 쓴다. LLM에는 고객의 원래 질문을 보낸다
+        glossary = self.config.retrieval.glossary
+        question = normalize(question, glossary)
+        previous = [normalize(p, glossary) for p in previous]
         alone = await self.aretrieve(question, k)
         if not previous:
             return alone
         joined = await self.aretrieve(" ".join([*previous, question]), k)
+        if self.config.retrieval.history_merge == "rrf":
+            return merge_rrf(alone, joined, k)
         return merge_alternately(alone, joined, k)
 
     # ---- 판단 + 답변 ----
@@ -158,6 +192,11 @@ class RagPipeline:
         """LLM 결과를 그대로 믿지 않고, 이상하면 안전하게 거절(unknown)한다."""
         if parsed is None:
             return Decision("unknown", [], "응답 파싱 실패")
+        if parsed.verdict == "greeting":
+            # 인사 답변에는 제품 사실이 없어야 한다. 숫자가 섞이면 지어낸 것으로 보고 고정 문구를 쓴다
+            text = parsed.answer.strip()
+            safe = text if text and not NUMBER_PATTERN.search(text) else None
+            return Decision("greeting", [], parsed.reason, safe)
         if parsed.verdict in ("unknown", "offtopic"):
             # 거절 문구는 LLM 답변이 아니라 프롬프트 파일의 고정 문구를 쓴다
             return Decision(parsed.verdict, [], parsed.reason)
@@ -171,7 +210,9 @@ class RagPipeline:
         return Decision(parsed.verdict, cited, parsed.reason, parsed.answer.strip())
 
     def _fixed_message(self, mode: Mode) -> str:
-        key = "offtopic_message" if mode == "offtopic" else "unknown_message"
+        key = {"offtopic": "offtopic_message", "greeting": "greeting_message"}.get(
+            mode, "unknown_message"
+        )
         return self.prompts[key].strip()
 
     # ---- 전체 ----

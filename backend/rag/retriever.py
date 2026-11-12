@@ -10,7 +10,7 @@ from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
 from rag.config import RagConfig, Settings
-from rag.data_loader import load_confirmed_faq
+from rag.data_loader import load_confirmed_items
 from rag.indexer import META_FILE, build_embeddings, index_signature
 from rag.keyword import KeywordIndex
 from rag.schemas import Source
@@ -30,7 +30,7 @@ class Retriever:
             collection_name=config.collection_name,
             embedding=build_embeddings(config, settings),
         )
-        items = load_confirmed_faq(config.data_path)
+        items = load_confirmed_items(config.data_paths)
         self._faq_count = len(items)
         self.support_required_ids = {i.faq_id for i in items if i.support_required}
         self.keyword_index = (
