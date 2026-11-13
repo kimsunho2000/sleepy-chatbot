@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ChatPanel from './components/ChatPanel';
+import Icon from './components/Icon';
+import Landing from './landing/Landing';
 
+const CHAT_ID = 'sleeby-chat';
 const isSoloHash = () => window.location.hash === '#/chat';
 
 export default function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [isSolo, setIsSolo] = useState(isSoloHash());
+  // 랜딩 페이지에서 고른 질문. 챗봇을 열면서 바로 보낸다
+  const [pendingQuestion, setPendingQuestion] = useState(null);
+  const launcherRef = useRef(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
     const onHashChange = () => setIsSolo(isSoloHash());
@@ -13,27 +20,49 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
+  // 창을 닫으면 포커스를 런처로 돌려준다
+  useEffect(() => {
+    if (wasOpenRef.current && !isOpen) launcherRef.current?.focus();
+    wasOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  const closeChat = useCallback(() => setIsOpen(false), []);
+
   if (isSolo) {
     return <ChatPanel isSolo onClose={() => (window.location.hash = '#/')} />;
   }
 
+  const askFromPage = (question) => {
+    setIsOpen(true);
+    setPendingQuestion({ id: crypto.randomUUID(), text: question });
+  };
+
   return (
-    <main className="stage">
-      <p className="wordmark">SLEEBY</p>
-      <p className="stage-note">
-        오른쪽 아래 버튼으로 안내 도우미를 열어 보세요.
-        <br />
-        전체 화면은 주소 끝에 <code>#/chat</code>을 붙이면 열려요.
-      </p>
-      {import.meta.env.VITE_DEMO === 'true' && (
-        <p className="stage-note">
-          미리보기: 서버 없이 FAQ 자료의 글자 겹침으로 답하는 간이 모드예요.
-        </p>
-      )}
-      <button type="button" className="launcher" hidden={isOpen} onClick={() => setIsOpen(true)}>
-        <span className="dot">●</span>안내 도우미
+    <>
+      <Landing onAsk={askFromPage} onOpenChat={() => setIsOpen(true)} />
+      <button
+        ref={launcherRef}
+        type="button"
+        className="launcher"
+        hidden={isOpen}
+        aria-controls={CHAT_ID}
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen(true)}
+      >
+        <span className="dot" aria-hidden="true">
+          <Icon name="moon" />
+        </span>
+        안내 도우미
       </button>
-      {isOpen && <ChatPanel onClose={() => setIsOpen(false)} />}
-    </main>
+      {/* 닫아도 대화가 남도록 숨기기만 한다 */}
+      <div hidden={!isOpen}>
+        <ChatPanel
+          id={CHAT_ID}
+          isOpen={isOpen}
+          pendingQuestion={pendingQuestion}
+          onClose={closeChat}
+        />
+      </div>
+    </>
   );
 }

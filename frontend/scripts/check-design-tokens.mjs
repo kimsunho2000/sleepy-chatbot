@@ -60,9 +60,14 @@ const PROPERTY_RULES = [
 
 const violations = [];
 
+// src/landing/은 회사 홈페이지를 흉내 낸 데모 배경이라 챗봇 디자인 시스템 검사 대상이 아니다.
+// 랜딩 스타일은 .landing 안으로 한정돼 있어 챗봇 화면에 영향을 주지 않는다.
+const EXCLUDED_DIRS = new Set([join(SRC, 'landing')]);
+
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
+    if (EXCLUDED_DIRS.has(path)) return [];
     return statSync(path).isDirectory() ? walk(path) : [path];
   });
 }
