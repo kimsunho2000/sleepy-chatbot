@@ -22,8 +22,21 @@ from common import (
 )
 from metrics import e2e_metrics
 
+from rag.errors import RagError
 from rag.schemas import RagSystem
 
+# RAG 장애로 답변을 만들지 못한 질문. 응답 필드 모양은 RagResponse와 맞춘다
+FAILED_ROW = {
+    "mode": "error",
+    "answer": "",
+    "sources": [],
+    "show_contact": False,
+    "retrieved_ids": [],
+    "retrieved_scores": [],
+    "latency_ms": 0.0,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+}
 GRADES = "정답 / 부분 정답 / 오답 / 근거 없는 답변"
 CSV_COLUMNS = [
     "run",
@@ -48,10 +61,15 @@ async def run(system: RagSystem, dataset: list[dict]) -> list[dict]:
     for item in dataset:
         history = previous_questions(item)
         # 이전 질문을 받지 않는 구현도 평가할 수 있도록, 이전 질문이 있을 때만 넘긴다
-        if history:
-            response = await system.aanswer(item["question"], history=history)
-        else:
-            response = await system.aanswer(item["question"])
+        try:
+            if history:
+                response = await system.aanswer(item["question"], history=history)
+            else:
+                response = await system.aanswer(item["question"])
+        except RagError as e:
+            # 장애(파싱·검색 실패)는 unknown 답변이 아니라 실패로 기록해 채점에서 구별한다
+            rows.append({**item, **FAILED_ROW, "reason": f"{type(e).__name__}: {e}"})
+            continue
         rows.append({**item, **response.model_dump()})
     return rows
 
