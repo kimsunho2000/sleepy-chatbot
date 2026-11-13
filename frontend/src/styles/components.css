@@ -1,35 +1,5 @@
 /* 화면과 컴포넌트 스타일: 토큰(var(--...))만 쓴다. 명세는 design/DESIGN.md 4장 */
 
-/* ===== 화면: 데모 무대 ===== */
-.stage {
-  min-height: 100dvh;
-  display: grid;
-  place-content: center;
-  gap: var(--space-4);
-  text-align: center;
-  padding: var(--space-6);
-}
-
-.wordmark {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: var(--weight-regular);
-  font-size: var(--text-lg);
-  letter-spacing: var(--tracking-wordmark);
-}
-
-.stage-note {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--text-sm);
-}
-
-.stage-note code {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--color-text-secondary);
-}
-
 /* ===== 런처 ===== */
 .launcher {
   position: fixed;
@@ -75,7 +45,6 @@
   z-index: var(--z-chat);
   display: flex;
   flex-direction: column;
-  /* 부모(.stage)의 가운데 정렬을 물려받지 않게 한다 */
   text-align: left;
   /* 이 창의 너비가 안쪽 글자·컨트롤 크기의 기준이 된다 (tokens.css의 cqi 단위) */
   container: chat / inline-size;
@@ -320,7 +289,42 @@
   scrollbar-color: var(--color-bg-surface-raised) transparent;
 }
 
-/* ===== 환영 화면: 첫 인사 말풍선 아래에 안내와 주제 카드가 이어진다 ===== */
+/* ===== 환영 화면: 달 아이콘과 질문 제목 아래에 안내와 주제 카드가 이어진다 ===== */
+.welcome-head {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  text-align: center;
+}
+
+.welcome-head .moon {
+  display: grid;
+  place-items: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: var(--radius-full);
+  background: var(--fill-lamp-subtle);
+  color: var(--color-accent);
+  font-size: var(--text-md);
+}
+
+.welcome-head h2 {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
+}
+
+.welcome-head p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+}
+
 .welcome > p {
   margin: 0;
   color: var(--color-text-secondary);
@@ -467,24 +471,6 @@
   color: var(--color-danger);
 }
 
-/* 참고한 자료: 답변 바로 아래, 같은 말풍선 안에서 구분선으로 나눈다 */
-.sources {
-  margin-top: var(--space-3);
-  padding-top: var(--space-3);
-  border-top: var(--border-width) solid var(--color-border-subtle);
-}
-
-.src {
-  display: block;
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  letter-spacing: var(--tracking-caption);
-}
-
-.sources .chips {
-  margin-top: var(--space-2);
-}
-
 /* ===== 칩과 버튼 ===== */
 .chips {
   display: flex;
@@ -526,30 +512,6 @@
 
 .pill:disabled {
   opacity: var(--opacity-disabled);
-}
-
-.score {
-  margin-left: var(--space-2);
-  padding-left: var(--space-2);
-  border-left: var(--border-width) solid currentcolor;
-  color: var(--color-text-muted);
-  font-size: var(--text-xs);
-  font-variant-numeric: tabular-nums;
-}
-
-.excerpt {
-  margin-top: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border: var(--border-width) solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--color-bg-page);
-  color: var(--color-text-secondary);
-  font-size: var(--text-sm);
-  line-height: var(--leading-normal);
-}
-
-.excerpt p {
-  margin: var(--space-1) 0 0;
 }
 
 /* ===== 확인 팝업 (대화 초기화) ===== */
@@ -656,12 +618,6 @@
   border-color: var(--color-accent);
 }
 
-.inquiry .check {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
-
 .inquiry .actions {
   display: flex;
   gap: var(--space-2);
@@ -750,4 +706,49 @@
   color: var(--color-text-muted);
   font-size: var(--text-xs);
   text-align: center;
+}
+
+/* 하단 안내 문구 안의 링크형 버튼 (담당자 문의, 상담사 연결) */
+.chat-note .note-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.chat-note .note-link:hover {
+  color: var(--color-accent);
+}
+
+/* 문의 폼: 대화 내용이 함께 전달된다는 안내 */
+.inquiry .notice {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+/* 다시 시도까지 남은 시간 (Retry-After) */
+.wait-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+/* 글리프 대신 쓰는 선 아이콘: 둥근 바탕 크기에 맞춘다 */
+.av .icon {
+  width: calc(var(--avatar-size) / 2);
+  height: calc(var(--avatar-size) / 2);
+}
+
+.launcher .dot .icon {
+  width: calc(var(--badge-size) / 2);
+  height: calc(var(--badge-size) / 2);
+}
+
+.send {
+  display: grid;
+  place-items: center;
 }

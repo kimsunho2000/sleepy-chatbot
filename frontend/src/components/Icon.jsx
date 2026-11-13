@@ -1,9 +1,14 @@
-// 헤더 도구용 선 아이콘. 크기와 선 굵기는 CSS(.icon, --icon-sm, --stroke-thin)가 정한다
+// 선 아이콘. 크기와 선 굵기는 CSS(.icon, --icon-sm, --stroke-thin)가 정한다
 const PATHS = {
-  minus: 'M3 8h10',
+  close: 'M4 4l8 8M12 4l-8 8',
   refresh: 'M13 8a5 5 0 1 1-1.5-3.5M13 2.5v3h-3',
   expand: 'M9.5 2.5h4v4M6.5 13.5h-4v-4M13.5 2.5l-4.5 4.5M2.5 13.5l4.5-4.5',
   collapse: 'M13.5 6.5h-4v-4M2.5 9.5h4v4M9.5 6.5l4-4M6.5 9.5l-4 4',
+  headset: 'M3 10V8a5 5 0 0 1 10 0v2M2.5 9.5h2v4h-2zM11.5 9.5h2v4h-2z',
+  chevron: 'M6 4l4 4-4 4',
+  // 참고 시안의 달·보내기 아이콘(24 격자)을 16 격자로 줄인 것
+  moon: 'M13.3 9.7A5.3 5.3 0 0 1 6.3 2.7a5.3 5.3 0 1 0 7 7Z',
+  send: 'M8 12.7V3.3M4 7.3l4-4 4 4',
 };
 
 export default function Icon({ name }) {
