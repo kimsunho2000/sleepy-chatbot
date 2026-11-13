@@ -1,0 +1,7 @@
+/*
+ * 스타일 진입점. 순서가 중요하다: 토큰 -> 기본 -> 컴포넌트.
+ * 모든 화면은 tokens.css의 토큰만 쓴다 (design/DESIGN.md, npm run lint:design).
+ */
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/components.css';
