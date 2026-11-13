@@ -1,0 +1,23 @@
+# 개발·테스트용 로컬 PostgreSQL. 실행: docker compose up -d (backend/에서)
+# 운영 DB는 Supabase이고, 여기 계정은 로컬 전용이다.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: sleeby
+      POSTGRES_PASSWORD: sleeby
+      POSTGRES_DB: sleeby
+    ports:
+      - "5433:5432"
+    volumes:
+      - sleeby-db:/var/lib/postgresql/data
+      # 테스트는 개발 DB를 건드리지 않도록 별도 DB(sleeby_test)를 쓴다
+      - ./db-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sleeby -d sleeby"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  sleeby-db:
