@@ -1,0 +1,197 @@
+/*
+ * 디자인 토큰: design/DESIGN.md 의 구현이다.
+ * 원시 값(색상, px, 시간, 이징, 그림자)은 이 파일에만 쓴다.
+ * 다른 CSS와 JSX는 아래 토큰(var(--...))만 쓴다. `npm run lint:design`이 이를 검사한다.
+ * 출처: design/sleepy-landing.html (객실의 밤: 훈연 월넛 바닥, 리넨 글자, 스탠드 조명 하나)
+ */
+:root {
+  color-scheme: dark;
+
+  /* ===== 1. 원시 팔레트 (레퍼런스 그대로) ===== */
+  --palette-walnut: #15110d;
+  --palette-wall: #1c1713;
+  --palette-wood: #261e18;
+  --palette-wood-2: #31271f;
+  --palette-night: #0f0c0a; /* 레퍼런스의 #0E0B09, #0F0C0A를 하나로 통합 */
+  --palette-panel-top: #221b15;
+  --palette-panel-bottom: #17120e;
+  --palette-ember: #3a2614;
+  --palette-linen: #ede4d3;
+  --palette-linen-2: #c4b7a2;
+  --palette-linen-3: #9c8f7c;
+  --palette-lamp: #e8b46a;
+  --palette-lamp-hi: #f4cc8e;
+  --palette-lamp-ink: #20150a;
+  --palette-brass: #b8935a;
+  --palette-black: #000;
+  --palette-coral: #e58a7a; /* 레퍼런스에 없음: 앱의 오류 표시용으로 추가 */
+
+  /* ===== 2. 의미 색상 (화면에서는 이 층만 쓴다) ===== */
+  --color-bg-page: var(--palette-walnut);
+  --color-bg-wall: var(--palette-wall);
+  --color-bg-surface: var(--palette-wood);
+  --color-bg-surface-raised: var(--palette-wood-2);
+  --color-bg-field: var(--palette-night);
+  --color-bg-warm: var(--palette-ember);
+  --color-text: var(--palette-linen);
+  --color-text-secondary: var(--palette-linen-2);
+  --color-text-muted: var(--palette-linen-3);
+  --color-accent: var(--palette-lamp);
+  --color-accent-hover: var(--palette-lamp-hi);
+  --color-on-accent: var(--palette-lamp-ink);
+  --color-danger: var(--palette-coral);
+  --color-focus-ring: var(--palette-lamp);
+
+  /* 테두리: 리넨 9% / 황동 34% / 황동 60% */
+  --color-border-subtle: color-mix(in srgb, var(--palette-linen) 9%, transparent);
+  --color-border: color-mix(in srgb, var(--palette-brass) 34%, transparent);
+  --color-border-strong: color-mix(in srgb, var(--palette-brass) 60%, transparent);
+
+  /* 채움: 램프 색의 투명도 단계, 리넨 색의 투명도 단계 */
+  --fill-lamp-faint: color-mix(in srgb, var(--palette-lamp) 4%, transparent);
+  --fill-lamp-subtle: color-mix(in srgb, var(--palette-lamp) 5%, transparent);
+  --fill-lamp-soft: color-mix(in srgb, var(--palette-lamp) 8%, transparent);
+  --fill-lamp-medium: color-mix(in srgb, var(--palette-lamp) 14%, transparent);
+  --fill-lamp-strong: color-mix(in srgb, var(--palette-lamp) 24%, transparent);
+  --fill-linen-faint: color-mix(in srgb, var(--palette-linen) 2.5%, transparent);
+  --fill-linen-hover: color-mix(in srgb, var(--palette-linen) 7%, transparent);
+
+  /* 그라디언트 */
+  --gradient-panel: linear-gradient(
+    180deg,
+    var(--palette-panel-top),
+    var(--palette-panel-bottom) 40%
+  );
+  --gradient-moon: radial-gradient(circle, var(--fill-lamp-strong), var(--fill-lamp-faint) 70%);
+
+  /* ===== 3. 그림자 ===== */
+  --shadow-float: 0 16px 40px -12px color-mix(in srgb, var(--palette-black) 85%, transparent);
+  --shadow-card: 0 40px 80px -40px color-mix(in srgb, var(--palette-black) 90%, transparent);
+  --shadow-panel: 0 40px 90px -30px color-mix(in srgb, var(--palette-black) 95%, transparent);
+
+  /* ===== 4. 타이포그래피 ===== */
+  --font-display: 'Hahmlet', 'Nanum Myeongjo', serif;
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Malgun Gothic', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /*
+   * 글자 크기는 챗봇 창(.chat, container-type: inline-size) 너비에 비례해 연속으로 커지고 줄어든다.
+   * 형식: clamp(최소, 최소 + (창 너비 - 360px) x 기울기, 최대)
+   *  - 창 너비 360px 이하는 최소값, 860px 이상은 최대값이고 그 사이는 직선으로 변한다.
+   *  - 360~860px은 사용자가 끌어서 조절할 수 있는 창 너비 범위(--chat-min-width ~ --chat-max-width)와 같다.
+   *  - 기울기 = (최대 - 최소) / 500px. 값이 클수록 창이 넓어질 때 더 많이 커진다.
+   *  - 기본 창(440px)의 본문이 약 15px가 되도록 맞췄다(창 대비 글자가 너무 커 보이지 않게).
+   * 전체 화면 확장 때는 본문 열이 최대 760px이라, 상한(본문 18px)이 그 열에 맞는 크기다.
+   */
+  --text-xs: clamp(12px, calc(12px + (100cqi - 360px) * 0.005), 14.5px); /* 캡션, 라벨, 출처 */
+  --text-sm: clamp(13px, calc(13px + (100cqi - 360px) * 0.006), 16px); /* 칩, 보조 설명 */
+  --text-base: clamp(14.5px, calc(14.5px + (100cqi - 360px) * 0.007), 18px); /* 대화·폼 본문 */
+  --text-md: clamp(16px, calc(16px + (100cqi - 360px) * 0.006), 19px); /* 입력창(16px 미만 금지) */
+  --text-lg: clamp(19px, calc(19px + (100cqi - 360px) * 0.01), 24px); /* 워드마크 */
+  --text-xl: clamp(24px, calc(24px + (100cqi - 360px) * 0.016), 32px); /* 큰 제목 */
+  --icon-lg: clamp(22px, calc(22px + (100cqi - 360px) * 0.012), 28px); /* 큰 글리프 아이콘 */
+  --icon-sm: clamp(15px, calc(15px + (100cqi - 360px) * 0.008), 19px); /* 헤더 도구 아이콘 */
+
+  --leading-tight: 1.3;
+  --leading-heading: 1.4;
+  --leading-snug: 1.5;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.75;
+
+  --tracking-caption: 0.02em;
+  --tracking-title: 0.3em;
+  --tracking-wordmark: 0.34em;
+
+  /* ===== 5. 간격 (4px 기준) ===== */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* ===== 6. 모서리 (Griffin 토큰 4 / 8 / 12 / 20 / full) ===== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+  --radius-round: 50%;
+
+  /* ===== 7. 선, 포커스, 투명도 ===== */
+  --border-width: 1px;
+  --outline-width: 2px;
+  --outline-offset: 2px;
+  --stroke-thin: 1.25; /* 아이콘 선 굵기(가느다랗게) */
+  --opacity-dim: 0.25;
+  --opacity-disabled: 0.5;
+  --opacity-hint: 0.85;
+
+  /* ===== 8. 컴포넌트 크기 ===== */
+  /* 컨트롤은 글자 크기와 함께 커지므로 챗봇 창 너비에 비례한다(320~720px). 터치 목표는 40px 이상이다 */
+  --control-sm: clamp(40px, calc(40px + (100cqi - 360px) * 0.008), 44px); /* 칩, 작은 버튼 */
+  --control-md: clamp(42px, calc(42px + (100cqi - 360px) * 0.012), 48px); /* 도구 버튼 */
+  --control-lg: clamp(46px, calc(46px + (100cqi - 360px) * 0.012), 52px); /* 입력창, 전송 버튼 */
+  --control-xl: 56px; /* 런처: 챗봇 창 밖이라 고정 */
+  --control-composer-expanded: 68px; /* 전체 창 확대 때의 입력창·전송 버튼 높이 */
+  --modal-max: 340px;
+  --scrim: color-mix(in srgb, var(--palette-black) 60%, transparent);
+  --avatar-size: clamp(28px, calc(28px + (100cqi - 360px) * 0.012), 34px);
+  --badge-size: 32px;
+  --status-dot-size: 6px;
+  --bubble-max: 86%;
+
+  /*
+   * 챗봇 창 크기. 기본값은 화면 너비에 따라 380~520px로 연속 변하고(560px 이하는 전체 화면),
+   * 사용자가 모서리나 가장자리를 끌면 --chat-width, --chat-height가 px 값으로 덮어써진다.
+   */
+  --chat-width: clamp(440px, 36vw, 600px);
+  --chat-height: min(var(--chat-height-max), calc(100dvh - 2 * var(--chat-inset)));
+  --chat-height-max: clamp(560px, 90dvh, 900px);
+  --chat-min-width: 360px;
+  --chat-max-width: 860px;
+  --chat-min-height: 440px;
+  --chat-inset: 20px;
+  --chat-content-max: 760px;
+
+  /* 크기 조절 핸들: 모서리 손잡이, 가장자리 잡는 폭, 모서리 표시(ㄱ자)의 한 변 */
+  --resize-corner: 32px;
+  --resize-edge: 10px;
+  --resize-grip: 12px;
+  --resize-step: 24px; /* 방향키 한 번에 바뀌는 크기 */
+
+  /* ===== 9. 모션 ===== */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0, 0, 0.58, 1);
+  --duration-fast: 0.2s;
+  --duration-base: 0.3s;
+  --duration-medium: 0.4s;
+  --duration-slow: 0.5s;
+  --duration-blink: 1.4s;
+  --duration-stagger: 0.2s;
+  --rise-distance: 8px;
+  --lift: -2px;
+
+  /* ===== 10. 겹침 순서 ===== */
+  --z-handle: 1; /* 챗봇 창 안쪽의 크기 조절 핸들 */
+  --z-popup: 2; /* 챗봇 창 안쪽의 확인 팝업(크기 핸들 위) */
+  --z-launcher: 40;
+  --z-chat: 50;
+  --z-toast: 60;
+
+  /*
+   * 브레이크포인트: @media 안에는 var()를 쓸 수 없어서 값을 문서로만 고정한다.
+   * 560px 이하: 챗봇 창이 전체 화면 / 720px 이상: 여백 40px 구간 / 960px 이상: 넓은 레이아웃
+   */
+}

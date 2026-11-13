@@ -1,0 +1,50 @@
+/* 기본 스타일: 토큰만 쓴다. 리셋, 본문 서체, 포커스, 선택 색 */
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg-page);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  /* 한글은 글자 중간이 아니라 띄어쓰기에서 줄바꿈한다 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  caret-color: var(--color-accent);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: var(--outline-width) solid var(--color-focus-ring);
+  outline-offset: var(--outline-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
