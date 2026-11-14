@@ -26,7 +26,9 @@ def _response(inquiry: Inquiry) -> InquiryResponse:
     return InquiryResponse(
         inquiry_id=inquiry.id,
         reference_no=inquiry.reference_no,
-        status=inquiry.status,
+        # 재전송에는 "처음 결과"를 돌려준다. 접수 직후 상태는 항상 received라서
+        # 관리자가 이후 상태를 바꿨어도 고객에게 처리 상태가 새어 나가지 않는다
+        status="received",
         created_at=inquiry.created_at,
     )
 

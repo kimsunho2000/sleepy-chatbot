@@ -6,12 +6,12 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
+from app.schemas.admin_common import SourceItem, TurnStatus
+from app.schemas.chat import Mode
 from app.schemas.inquiry import InquiryOrigin, InquiryStatus
 
 # 목록 필터. unresolved는 received + in_progress ("처리 전")
 InquiryStatusFilter = Literal["unresolved", "all", "received", "in_progress", "completed"]
-TurnStatus = Literal["completed", "failed"]
-TurnMode = Literal["answer", "partial", "unknown", "offtopic", "greeting"]
 
 INTERNAL_NOTE_MAX_LENGTH = 2000
 
@@ -32,13 +32,6 @@ class InquirySummary(BaseModel):
     created_at: datetime
 
 
-class InquiryListResponse(BaseModel):
-    items: list[InquirySummary]
-    page: int
-    size: int
-    total_count: int
-
-
 class InquiryCounts(BaseModel):
     received: int
     in_progress: int
@@ -50,26 +43,18 @@ class InquiryCounts(BaseModel):
     total: int
 
 
-class SourceRef(BaseModel):
-    rank: int
-    source_id: str
-    # 저장 당시 제목. 찾지 못했으면 null
-    title: str | None
-    score: float | None
-
-
 class ConversationTurn(BaseModel):
     turn_id: uuid.UUID
     question: str
     # 같은 값을 가진 turn이 여럿이면 같은 자리에서 갈라진 답변 시도다
     parent_turn_id: uuid.UUID | None
     status: TurnStatus
-    mode: TurnMode | None
+    mode: Mode | None
     answer: str | None
     # 답변에 실제로 쓴 근거. 답변 불가·범위 밖 turn은 비어 있다
-    cited_sources: list[SourceRef]
+    cited_sources: list[SourceItem]
     # 검색 후보 상위 3개
-    retrieved_sources: list[SourceRef] = Field(max_length=3)
+    retrieved_sources: list[SourceItem] = Field(max_length=3)
     is_trigger: bool
     created_at: datetime
 

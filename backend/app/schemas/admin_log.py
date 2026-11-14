@@ -1,20 +1,17 @@
 """관리자 질문 로그·대시보드 API 스키마.
 
 출처, 판단 사유, 토큰, 예상 비용은 관리자 API에서만 내보낸다.
-Page와 SourceItem은 문의 상세·답 못 한 질문에서도 같은 형식을 쓴다. 공통 파일로 옮기기 전까지 여기 둔다.
 """
 
 import uuid
 from datetime import date, datetime
-from typing import Generic, Literal, TypeVar
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.admin_common import LinkedInquiry, SourceItem, TurnStatus
 from app.schemas.chat import FeedbackResponse, Mode, Rating
 
-T = TypeVar("T")
-
-TurnStatus = Literal["completed", "failed"]
 RatingFilter = Literal["up", "down", "none"]
 TurnErrorCode = Literal[
     "llm_rate_limit",
@@ -24,29 +21,6 @@ TurnErrorCode = Literal[
     "llm_error",
     "retrieval_error",
 ]
-
-
-class Page(BaseModel, Generic[T]):
-    """페이지 번호 목록 응답. 기본 정렬은 최신순이다."""
-
-    items: list[T]
-    page: int
-    size: int
-    total_count: int
-
-
-class SourceItem(BaseModel):
-    """검색 후보 또는 답변 근거 1건. score는 검색 점수이고 확률이 아니다."""
-
-    rank: int
-    source_id: str
-    title: str | None
-    score: float | None
-
-
-class LinkedInquiry(BaseModel):
-    id: uuid.UUID
-    reference_no: str
 
 
 class TurnLogItem(BaseModel):

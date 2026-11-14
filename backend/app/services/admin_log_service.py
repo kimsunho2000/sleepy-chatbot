@@ -10,14 +10,12 @@ from app.core.errors import AppError, ErrorCode
 from app.core.rate_limit import KST, kst_day_start
 from app.db.models import TurnSource
 from app.repositories.admin_log_repository import AdminLogRepository, TurnFilter
+from app.schemas.admin_common import LinkedInquiry, Page, SourceItem
 from app.schemas.admin_log import (
     DailyCount,
     DashboardResponse,
     FailedByReason,
-    LinkedInquiry,
     ModeCounts,
-    Page,
-    SourceItem,
     TopSource,
     TurnLogDetail,
     TurnLogItem,

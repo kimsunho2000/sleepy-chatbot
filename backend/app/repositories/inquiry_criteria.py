@@ -1,6 +1,6 @@
 """문의 집계 기준. 대시보드, 문의 목록 필터, 상단 배지가 같은 규칙을 쓰도록 한 곳에 둔다.
 
-팀 확인 필요: 문의 관리 API(/api/admin/inquiry-counts)와 기준을 맞춘다. 바꿀 때는 이 파일만 고친다.
+문의 관리 API(목록·건수)도 이 기준을 쓴다. 바꿀 때는 이 파일만 고친다.
 """
 
 from sqlalchemy import ColumnElement

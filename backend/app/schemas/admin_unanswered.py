@@ -6,12 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.schemas.admin_common import LinkedInquiry, Page
 from app.schemas.chat import Mode, Rating
-
-
-class InquiryLink(BaseModel):
-    id: uuid.UUID
-    reference_no: str
 
 
 class UnansweredGroup(BaseModel):
@@ -23,14 +19,7 @@ class UnansweredGroup(BaseModel):
     partial_count: int
     downvote_count: int
     last_seen_at: datetime
-    inquiries: list[InquiryLink]
-
-
-class GroupPage(BaseModel):
-    items: list[UnansweredGroup]
-    page: int
-    size: int
-    total_count: int
+    inquiries: list[LinkedInquiry]
 
 
 class QuestionVariant(BaseModel):
@@ -40,22 +29,17 @@ class QuestionVariant(BaseModel):
 
 class UnansweredTurn(BaseModel):
     turn_id: uuid.UUID
+    chat_id: uuid.UUID
     question: str
     status: Literal["completed"]
     mode: Mode
+    latency_ms: float | None
     rating: Rating | None
     created_at: datetime
-    inquiries: list[InquiryLink]
-
-
-class TurnPage(BaseModel):
-    items: list[UnansweredTurn]
-    page: int
-    size: int
-    total_count: int
+    inquiries: list[LinkedInquiry]
 
 
 class GroupDetail(BaseModel):
     group: UnansweredGroup
     variants: list[QuestionVariant]
-    turns: TurnPage
+    turns: Page[UnansweredTurn]

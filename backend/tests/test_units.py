@@ -1,6 +1,8 @@
 """DB 없이 확인하는 규칙: 한국 날짜 경계, 요청 제한, 로그인 차단, RAG 장애 알림."""
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -11,6 +13,8 @@ from app.core.rate_limit import (
     kst_day_start,
     seconds_until_kst_midnight,
 )
+from app.services.admin_unanswered_service import period
+from rag.data_loader import load_faq
 from rag.errors import ParseError, RetrievalError
 from rag.glossary import normalize
 from rag.pipeline import (
@@ -186,3 +190,18 @@ def test_limiter_counts_same_request_once() -> None:
     assert limiter.hit("k", 1, 3600, request_key="r1") is None
     assert limiter.hit("k", 1, 3600, request_key="r1") is None
     assert limiter.hit("k", 1, 3600, request_key="r2") is not None
+
+
+def test_unanswered_default_period_uses_kst_midnight() -> None:
+    # 2026-11-14 23:30 KST = 14:30 UTC
+    start, end = period(None, None, datetime(2026, 11, 14, 14, 30, tzinfo=UTC))
+    assert end == datetime(2026, 11, 14, 15, tzinfo=UTC)  # 11-15 00:00 KST
+    assert start == datetime(2026, 10, 15, 15, tzinfo=UTC)  # 30일 전 자정
+
+
+def test_faq_loader_rejects_reserved_id(tmp_path: Path) -> None:
+    path = tmp_path / "faq.json"
+    item = {"faq_id": "none", "category": "c", "question": "q", "source": "s", "status": "draft"}
+    path.write_text(json.dumps([item]), encoding="utf-8")
+    with pytest.raises(ValueError, match="예약된"):
+        load_faq(path)

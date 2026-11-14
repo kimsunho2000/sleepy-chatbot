@@ -45,6 +45,21 @@ async def test_same_request_id_returns_first_result_or_conflict(client: AsyncCli
     assert body["error"]["code"] == "conflict"
 
 
+async def test_replay_returns_first_status_after_admin_update(
+    client: AsyncClient, db: async_sessionmaker[AsyncSession]
+) -> None:
+    payload = inquiry()
+    _, first = await post(client, payload)
+    async with db() as session:
+        saved = await session.get(Inquiry, uuid.UUID(first["inquiry_id"]))
+        saved.status = "in_progress"
+        await session.commit()
+
+    status, again = await post(client, payload)
+    assert status == 201
+    assert again == first
+
+
 async def test_chat_id_requires_its_token(client: AsyncClient) -> None:
     chat_id, headers = await new_chat(client)
     _, other_headers = await new_chat(client)

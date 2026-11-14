@@ -297,6 +297,37 @@ async def test_turn_detail_lists_linked_inquiries(client: AsyncClient, fake_rag:
     ]
 
 
+async def test_linked_inquiries_at_same_time_follow_reference_order(
+    client: AsyncClient, fake_rag: FakeRag, db: async_sessionmaker[AsyncSession]
+) -> None:
+    turn = await make_turn(client, fake_rag)
+    numbers = []
+    for _ in range(3):
+        response = await client.post(
+            "/api/inquiries",
+            json={
+                "name": "데모 고객",
+                "email": "demo@example.com",
+                "content": "상담을 원해요",
+                "origin": "agent_request",
+                "chat_id": turn["chat_id"],
+                "trigger_turn_id": turn["body"]["turn_id"],
+                "request_id": str(uuid.uuid4()),
+            },
+            headers=turn["auth"],
+        )
+        assert response.status_code == 201, response.text
+        numbers.append(response.json()["reference_no"])
+    # 접수 시각이 같아도 문의 번호 순으로 나와야 한다
+    async with db() as session:
+        await session.execute(update(Inquiry).values(created_at=datetime(2026, 11, 1, tzinfo=UTC)))
+        await session.commit()
+
+    admin = await admin_headers(client)
+    body = (await client.get(f"/api/admin/turns/{turn['body']['turn_id']}", headers=admin)).json()
+    assert [link["reference_no"] for link in body["inquiries"]] == numbers
+
+
 async def test_turn_detail_not_found(client: AsyncClient) -> None:
     admin = await admin_headers(client)
     response = await client.get(f"/api/admin/turns/{uuid.uuid4()}", headers=admin)

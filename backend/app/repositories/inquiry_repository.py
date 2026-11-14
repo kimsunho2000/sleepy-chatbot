@@ -8,9 +8,7 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ChatTurn, Inquiry, TurnSource
-
-# "처리 전"으로 묶는 상태
-UNRESOLVED_STATUSES = ("received", "in_progress")
+from app.repositories.inquiry_criteria import unread_inquiry, unresolved_inquiry
 
 
 @dataclass(frozen=True)
@@ -33,13 +31,13 @@ class InquiryFilter:
         if self.origin is not None:
             found.append(Inquiry.origin == self.origin)
         if self.status == "unresolved":
-            found.append(Inquiry.status.in_(UNRESOLVED_STATUSES))
+            found.append(unresolved_inquiry())
         elif self.status not in (None, "all"):
             found.append(Inquiry.status == self.status)
         if self.viewed is True:
-            found.append(Inquiry.first_viewed_at.is_not(None))
+            found.append(~unread_inquiry())
         elif self.viewed is False:
-            found.append(Inquiry.first_viewed_at.is_(None))
+            found.append(unread_inquiry())
         return found
 
 
@@ -89,7 +87,7 @@ class InquiryRepository:
             func.count().filter(Inquiry.status == "received"),
             func.count().filter(Inquiry.status == "in_progress"),
             func.count().filter(Inquiry.status == "completed"),
-            func.count().filter(Inquiry.first_viewed_at.is_(None)),
+            func.count().filter(unread_inquiry()),
             func.count(),
         ).where(*condition.conditions())
         row = (await self.session.execute(query)).one()

@@ -13,14 +13,16 @@ from app.db.models import ChatTurn, Feedback, Inquiry, TurnSource
 def unanswered_rows(start: datetime, end: datetime) -> CTE:
     """검색 1순위 그룹화는 팀에서 채택한 설계 계약이다.
 
-    null(후보 없음)과 실제 source_id='none'은 내부에서 구분한다.
-    외부 키 충돌은 Service가 감지하여 모호한 결과를 반환하지 않는다.
+    null(후보 없음)은 API에서 group_key="none"이 된다. FAQ ID에 "none"은 쓰지 않는다
+    (rag.data_loader가 막는다).
     """
     return (
         select(
             ChatTurn.id.label("turn_id"),
+            ChatTurn.chat_id,
             ChatTurn.question,
             ChatTurn.mode,
+            ChatTurn.latency_ms,
             ChatTurn.created_at,
             Feedback.rating,
             TurnSource.source_id.label("source_key"),
@@ -48,13 +50,6 @@ def unanswered_rows(start: datetime, end: datetime) -> CTE:
 class AdminUnansweredRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-
-    async def has_reserved_key(self, rows: CTE) -> bool:
-        return bool(
-            await self.session.scalar(
-                select(select(rows.c.turn_id).where(rows.c.source_key == "none").exists())
-            )
-        )
 
     async def groups(
         self, rows: CTE, page: int, size: int, key: str | None = None
@@ -108,7 +103,12 @@ class AdminUnansweredRepository:
             select(rows.c.source_key, Inquiry.id, Inquiry.reference_no, Inquiry.trigger_turn_id)
             .join(Inquiry, Inquiry.trigger_turn_id == rows.c.turn_id)
             .where(condition)
-            .order_by(Inquiry.id)
+            # 질문 로그 상세와 같이 접수 순. 같은 시각이면 문의 번호 순 (길이 먼저: INQ-9999 < INQ-10000)
+            .order_by(
+                Inquiry.created_at,
+                func.length(Inquiry.reference_no),
+                Inquiry.reference_no,
+            )
         )
         links: dict[str | None, list[dict[str, Any]]] = {}
         for row in result.mappings():

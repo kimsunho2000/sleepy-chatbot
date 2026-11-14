@@ -106,7 +106,12 @@ class AdminLogRepository:
         query = (
             select(Inquiry.id, Inquiry.reference_no)
             .where(Inquiry.trigger_turn_id == turn_id)
-            .order_by(Inquiry.created_at)
+            # 같은 시각이면 문의 번호 순. 번호는 'INQ-' + 숫자 문자열이라 길이를 먼저 비교한다
+            .order_by(
+                Inquiry.created_at,
+                func.length(Inquiry.reference_no),
+                Inquiry.reference_no,
+            )
         )
         return [(row.id, row.reference_no) for row in (await self.session.execute(query)).all()]
 

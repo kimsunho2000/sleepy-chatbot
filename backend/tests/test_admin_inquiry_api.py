@@ -235,7 +235,7 @@ async def test_filters_by_origin_and_viewed(client: AsyncClient, fake_rag: FakeR
     assert (await listing(client, token, viewed="false", origin="direct_form"))["total_count"] == 0
 
 
-async def test_period_is_from_inclusive_to_exclusive_and_naive_means_utc(
+async def test_period_is_from_inclusive_to_exclusive_and_naive_is_rejected(
     client: AsyncClient, db: async_sessionmaker[AsyncSession]
 ) -> None:
     token = await admin(client)
@@ -248,8 +248,15 @@ async def test_period_is_from_inclusive_to_exclusive_and_naive_means_utc(
     names = {i["name"] for i in (await listing(client, token, **window))["items"]}
     assert names == {"당일 0시", "당일 오후"}  # from 포함, to 미포함
 
-    naive = {"from": "2026-11-10T00:00:00", "to": "2026-11-11T00:00:00"}
-    assert (await listing(client, token, **naive))["total_count"] == 2
+    # 시간대 없는 값은 질문 로그·대시보드·답 못 한 질문과 같이 거절한다
+    for path in ("/api/admin/inquiries", "/api/admin/inquiry-counts"):
+        response = await client.get(
+            path,
+            params={"from": "2026-11-10T00:00:00"},
+            headers=token,
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "validation_error"
     kst = {"from": "2026-11-10T09:00:00+09:00", "to": "2026-11-11T09:00:00+09:00"}
     assert (await listing(client, token, **kst))["total_count"] == 2
     assert (await listing(client, token, **{"from": "2026-11-10T12:00:00Z"}))["total_count"] == 2

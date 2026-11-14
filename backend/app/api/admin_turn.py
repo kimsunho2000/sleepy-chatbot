@@ -8,7 +8,8 @@ from pydantic import AwareDatetime
 
 from app.api.deps import AdminLogServiceDep, require_admin
 from app.repositories.admin_log_repository import TurnFilter
-from app.schemas.admin_log import Page, RatingFilter, TurnLogDetail, TurnLogItem, TurnStatus
+from app.schemas.admin_common import Page, TurnStatus
+from app.schemas.admin_log import RatingFilter, TurnLogDetail, TurnLogItem
 from app.schemas.chat import Mode
 from app.schemas.error import error_responses
 

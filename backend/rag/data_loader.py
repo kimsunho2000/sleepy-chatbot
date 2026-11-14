@@ -6,6 +6,10 @@ from pathlib import Path
 from rag.config import resolve_path
 from rag.schemas import FaqItem
 
+# 관리자 "답 못 한 질문"에서 검색 결과 없음 묶음의 키로 쓴다.
+# 이 검사 전에 저장된 로그에도 source_id='none'이 없다는 전제다 (지금까지의 FAQ ID는 Q·P로 시작)
+RESERVED_IDS = frozenset({"none"})
+
 
 def load_faq(path: str | Path) -> list[FaqItem]:
     with resolve_path(path).open(encoding="utf-8") as f:
@@ -15,6 +19,9 @@ def load_faq(path: str | Path) -> list[FaqItem]:
     duplicates = {i for i in ids if ids.count(i) > 1}
     if duplicates:
         raise ValueError(f"중복된 faq_id: {sorted(duplicates)}")
+    reserved = RESERVED_IDS.intersection(ids)
+    if reserved:
+        raise ValueError(f"예약된 faq_id는 쓸 수 없어요: {sorted(reserved)}")
     return items
 
 

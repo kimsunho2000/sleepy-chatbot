@@ -56,6 +56,7 @@ async def seed(
                 answer=None if failed else "답변",
                 error_code="llm_error" if failed else None,
                 show_contact=False,
+                latency_ms=None if failed else 123.0,
                 llm_model="fake",
                 config_name="test",
                 created_at=at,
@@ -165,7 +166,7 @@ async def test_empty_and_missing_group(client: AsyncClient) -> None:
     assert missing.json()["error"]["code"] == "not_found"
 
 
-async def test_no_search_result_and_reserved_key(
+async def test_no_search_result_group(
     client: AsyncClient, db: async_sessionmaker[AsyncSession]
 ) -> None:
     await seed(db, source=None)
@@ -173,9 +174,10 @@ async def test_no_search_result_and_reserved_key(
     response = await client.get(BASE + "/none", params=PERIOD, headers=headers)
     assert response.status_code == 200
     assert response.json()["group"]["source_title"] is None
-    await seed(db, source="none")
+    # 검색 결과 없음 묶음이 있어도 목록 전체가 막히지 않는다
     response = await client.get(BASE, params=PERIOD, headers=headers)
-    assert response.status_code == 409
+    assert response.status_code == 200
+    assert response.json()["items"][0]["group_key"] == "none"
 
 
 async def test_feedback_removal_changes_membership(
@@ -243,3 +245,26 @@ async def test_query_validation(client: AsyncClient, params: dict) -> None:
     response = await client.get(BASE, params=params, headers=await admin_headers(client))
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+async def test_turn_items_have_chat_id_and_latency(
+    client: AsyncClient, db: async_sessionmaker[AsyncSession]
+) -> None:
+    turn_id = await seed(db)
+    response = await client.get(BASE + "/Q01", params=PERIOD, headers=await admin_headers(client))
+    item = response.json()["turns"]["items"][0]
+    assert item["turn_id"] == str(turn_id)
+    assert uuid.UUID(item["chat_id"])
+    assert item["latency_ms"] == 123.0
+
+
+async def test_linked_inquiries_follow_reference_order(
+    client: AsyncClient, db: async_sessionmaker[AsyncSession]
+) -> None:
+    await seed(db, inquiries=5)
+    headers = await admin_headers(client)
+    group = (await client.get(BASE, params=PERIOD, headers=headers)).json()["items"][0]
+    numbers = [link["reference_no"] for link in group["inquiries"]]
+    assert numbers == sorted(numbers, key=lambda no: int(no.split("-")[1]))
+    detail = (await client.get(BASE + "/Q01", params=PERIOD, headers=headers)).json()
+    assert [link["reference_no"] for link in detail["turns"]["items"][0]["inquiries"]] == numbers

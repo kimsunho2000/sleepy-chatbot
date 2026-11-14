@@ -14,14 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError, ErrorCode
 from app.db.models import ChatTurn, Inquiry, TurnSource
 from app.repositories.inquiry_repository import InquiryFilter, InquiryRepository
+from app.schemas.admin_common import Page, SourceItem
 from app.schemas.admin_inquiry import (
     ConversationTurn,
     InquiryCounts,
     InquiryDetail,
-    InquiryListResponse,
     InquirySummary,
     InquiryUpdate,
-    SourceRef,
 )
 
 PREVIEW_LENGTH = 80
@@ -52,12 +51,14 @@ def _summary_fields(inquiry: Inquiry) -> dict:
     }
 
 
-def _source_refs(sources: list[TurnSource], kind: str, limit: int | None = None) -> list[SourceRef]:
+def _source_refs(
+    sources: list[TurnSource], kind: str, limit: int | None = None
+) -> list[SourceItem]:
     picked = [s for s in sources if s.kind == kind]
     if limit is not None:
         picked = picked[:limit]
     return [
-        SourceRef(rank=s.rank, source_id=s.source_id, title=s.title, score=s.score) for s in picked
+        SourceItem(rank=s.rank, source_id=s.source_id, title=s.title, score=s.score) for s in picked
     ]
 
 
@@ -83,9 +84,9 @@ class AdminInquiryService:
         self.session = session
         self.inquiries = InquiryRepository(session)
 
-    async def list(self, condition: InquiryFilter, page: int, size: int) -> InquiryListResponse:
+    async def list(self, condition: InquiryFilter, page: int, size: int) -> Page[InquirySummary]:
         rows, total = await self.inquiries.list_inquiries(condition, page, size)
-        return InquiryListResponse(
+        return Page[InquirySummary](
             items=[InquirySummary(**_summary_fields(row)) for row in rows],
             page=page,
             size=size,

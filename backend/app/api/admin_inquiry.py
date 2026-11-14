@@ -4,19 +4,21 @@
 """
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import AwareDatetime
 
 from app.api.deps import AdminInquiryServiceDep, require_admin
 from app.core.errors import AppError, ErrorCode
 from app.repositories.inquiry_repository import InquiryFilter
+from app.schemas.admin_common import Page
 from app.schemas.admin_inquiry import (
     InquiryCounts,
     InquiryDetail,
-    InquiryListResponse,
     InquiryStatusFilter,
+    InquirySummary,
     InquiryUpdate,
 )
 from app.schemas.error import error_responses
@@ -28,24 +30,20 @@ router = APIRouter(
     dependencies=[Depends(require_admin)],
 )
 
-# 기간 조건은 목록과 건수가 같은 문서를 쓴다
+# 기간 조건은 목록과 건수가 같은 문서를 쓴다. 시간대 없는 값은 다른 관리자 API처럼 422로 거절한다
 FromQuery = Annotated[
-    datetime | None, Query(alias="from", description="포함하는 UTC 경계. 생략하면 전체 기간")
+    AwareDatetime | None,
+    Query(alias="from", description="포함하는 UTC 경계. 생략하면 전체 기간"),
 ]
 ToQuery = Annotated[
-    datetime | None, Query(alias="to", description="포함하지 않는 UTC 경계. 생략하면 전체 기간")
+    AwareDatetime | None,
+    Query(alias="to", description="포함하지 않는 UTC 경계. 생략하면 전체 기간"),
 ]
 
 
-def _utc(value: datetime | None) -> datetime | None:
-    """시간대 없이 보낸 값은 UTC로 본다 (API는 UTC ISO 8601만 쓴다)."""
-    if value is not None and value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value
-
-
-def _period(created_from: datetime | None, created_to: datetime | None) -> tuple:
-    start, end = _utc(created_from), _utc(created_to)
+def _period(
+    start: datetime | None, end: datetime | None
+) -> tuple[datetime | None, datetime | None]:
     if start is not None and end is not None and start >= end:
         raise AppError(
             ErrorCode.VALIDATION_ERROR, "from은 to보다 앞이어야 해요.", fields=["from", "to"]
@@ -55,7 +53,7 @@ def _period(created_from: datetime | None, created_to: datetime | None) -> tuple
 
 @router.get(
     "/inquiries",
-    response_model=InquiryListResponse,
+    response_model=Page[InquirySummary],
     responses=error_responses(401, 422, 503),
     summary="문의 목록",
     description=(
@@ -73,7 +71,7 @@ async def list_inquiries(
     status: InquiryStatusFilter = "unresolved",
     origin: InquiryOrigin | None = None,
     viewed: bool | None = None,
-) -> InquiryListResponse:
+) -> Page[InquirySummary]:
     start, end = _period(created_from, created_to)
     condition = InquiryFilter(
         created_from=start, created_to=end, origin=origin, status=status, viewed=viewed
