@@ -170,7 +170,13 @@ async def test_needs_agent_shows_contact_even_after_number_fallback() -> None:
 
 def test_glossary_only_rewrites_person_connection_requests() -> None:
     # 대상 없는 "연결해 주세요"는 블루투스·앱 연결 질문에도 나오므로 바꾸지 않는다
-    for question in ("블루투스 매번 연결해줘야 하나요?", "폰이랑 연결해 주세요 어떻게 해요"):
+    # "사람"은 "두 사람", "다른 사람과"처럼 인원을 말할 때도 쓰이므로 바꾸지 않는다
+    for question in (
+        "블루투스 매번 연결해줘야 하나요?",
+        "폰이랑 연결해 주세요 어떻게 해요",
+        "두 사람 연결돼요?",
+        "다른 사람과 연결해서 같이 들을 수 있나요",
+    ):
         assert normalize(question, "default") == question
     assert "상담원 1:1 문의" in normalize("담당자하고 바로 연결해줘", "default")
 

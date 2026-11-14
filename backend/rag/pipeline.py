@@ -72,7 +72,8 @@ class LlmResultWithHandoff(BaseModel):
     reason: str = Field(description="질문의 핵심과 FAQ가 그 핵심을 다루는지에 대한 한 문장")
     verdict: Literal["answer", "partial", "unknown", "offtopic", "greeting", "handoff"] = Field(
         description="FAQ만으로 질문에 답할 수 있는지에 대한 판단. "
-        "제품 질문 없이 불만만 말하거나 담당자 연결을 원하면 handoff"
+        "새로운 제품 질문 없이 불만만 말하거나, 상담·문의 안내 FAQ가 검색되지 않았는데 "
+        "담당자 연결만 원하면 handoff"
     )
     needs_agent: bool = Field(description="고객이 불만을 표현했거나 담당자 연결을 원하면 true")
     faq_ids: list[str] = Field(description="답변 근거로 쓸 FAQ ID. unknown, offtopic이면 빈 목록")
