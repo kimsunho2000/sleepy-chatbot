@@ -58,6 +58,23 @@ export async function sendTurn({ chatId, token, question, parentTurnId }) {
   });
 }
 
+// 답변 평가 등록·교체. reason은 👎일 때만 보낸다 (wrong | insufficient | irrelevant)
+export async function putFeedback({ chatId, token, turnId, rating, reason }) {
+  if (IS_DEMO) return (await loadDemo()).demoFeedback({ rating, reason });
+  const body = rating === 'down' && reason ? { rating, reason } : { rating };
+  return request(`/api/chats/${chatId}/turns/${turnId}/feedback`, {
+    method: 'PUT',
+    token,
+    body: JSON.stringify(body),
+  });
+}
+
+// 답변 평가 취소
+export async function deleteFeedback({ chatId, token, turnId }) {
+  if (IS_DEMO) return null;
+  return request(`/api/chats/${chatId}/turns/${turnId}/feedback`, { method: 'DELETE', token });
+}
+
 // 문의 접수. 대화가 있으면 그 대화의 토큰을 함께 보낸다
 export async function sendInquiry(payload, token) {
   if (IS_DEMO) return (await loadDemo()).demoInquiry(payload);
