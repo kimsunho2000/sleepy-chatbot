@@ -730,6 +730,66 @@
   font-size: var(--text-xs);
 }
 
+/* 답변 평가 (👍/👎와 👎 이유) */
+.feedback {
+  margin-top: var(--space-3);
+}
+
+.feedback-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.feedback-question {
+  margin-right: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.feedback-btn {
+  display: grid;
+  place-items: center;
+  min-width: var(--control-sm);
+  min-height: var(--control-sm);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-text-muted);
+  /* 고르기 전에는 살짝 흐리게 두되, 저장 중(비활성)보다는 진하게 보여 누를 수 있음을 알린다 */
+  opacity: var(--opacity-hint);
+  transition:
+    border-color var(--duration-base),
+    color var(--duration-base),
+    opacity var(--duration-base);
+}
+
+.feedback-btn:hover:not(:disabled),
+.feedback-btn.is-on {
+  border-color: var(--color-accent);
+  opacity: 1;
+}
+
+/* 고른 평가는 선 색까지 강조색으로 바꿔, 테두리만으로 구분하기 어려운 화면에서도 보이게 한다 */
+.feedback-btn.is-on {
+  color: var(--color-accent);
+}
+
+.feedback-btn:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.feedback-reasons {
+  margin-top: var(--space-2);
+}
+
+.feedback-error {
+  margin: var(--space-1) 0 0;
+  color: var(--color-danger);
+  font-size: var(--text-xs);
+}
+
 /* 다시 시도까지 남은 시간 (Retry-After) */
 .wait-note {
   margin: 0;

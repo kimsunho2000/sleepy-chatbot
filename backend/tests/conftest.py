@@ -78,7 +78,8 @@ class FakeRag:
 @pytest.fixture(scope="session", autouse=True)
 def migrated_database() -> None:
     """테스트 DB를 비우고 Alembic 마이그레이션으로 테이블을 만든다. 마이그레이션 자체도 함께 검증된다."""
-    config = Config(str(BACKEND_DIR / "alembic.ini"))
+    config = Config()
+    config.file_config.read(BACKEND_DIR / "alembic.ini", encoding="utf-8")
     config.set_main_option("script_location", str(BACKEND_DIR / "migrations"))
     config.set_main_option("sqlalchemy.url", TEST_DATABASE_URL)
     config.attributes["configure_logger"] = False
