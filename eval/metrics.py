@@ -30,9 +30,9 @@ def retrieval_metrics(rows: list[dict], ks: tuple[int, ...] = (1, 3, 5)) -> dict
     return result
 
 
-def percentile(values: list[float], p: float) -> float:
+def percentile(values: list[float], p: float) -> float | None:
     if not values:
-        return 0.0
+        return None
     ordered = sorted(values)
     index = min(len(ordered) - 1, round(p / 100 * (len(ordered) - 1)))
     return ordered[index]
@@ -56,13 +56,15 @@ def e2e_metrics(rows: list[dict], input_price: float = 0.0, output_price: float 
     with_retrieval = [r for r in rows if r["expected_faq_ids"] and r.get("retrieved_ids")]
 
     n = len(rows) or 1
-    latencies = [r["latency_ms"] for r in rows]
+    # RAG 장애로 답하지 못한 행(mode=error)은 지연 0으로 기록되므로 지연 통계에서 뺀다
+    latencies = [r["latency_ms"] for r in rows if r["mode"] != "error"]
     prompt_tokens = sum(r["prompt_tokens"] for r in rows)
     completion_tokens = sum(r["completion_tokens"] for r in rows)
     cost = (prompt_tokens * input_price + completion_tokens * output_price) / 1_000_000
 
     return {
         "n": len(rows),
+        "error_count": sum(r["mode"] == "error" for r in rows),
         "mode_accuracy": sum(r["mode"] == r["expected_mode"] for r in rows) / n,
         # 답하면 안 되는 질문에 답한 비율 (근거 없는 답변 위험)
         "wrong_answer_rate": rate(should_refuse, lambda r: r["mode"] in ANSWERED),
@@ -79,7 +81,7 @@ def e2e_metrics(rows: list[dict], input_price: float = 0.0, output_price: float 
             answered_ok,
             lambda r: any(s["faq_id"] in r["expected_faq_ids"] for s in r["sources"]),
         ),
-        "latency_avg_ms": sum(latencies) / n,
+        "latency_avg_ms": sum(latencies) / len(latencies) if latencies else None,
         "latency_p95_ms": percentile(latencies, 95),
         "tokens_per_question": (prompt_tokens + completion_tokens) / n,
         "cost_per_question_usd": cost / n,

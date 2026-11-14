@@ -20,6 +20,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from rag.config import RagConfig, Settings, load_config
+from rag.errors import ParseError, RetrievalError
 from rag.glossary import normalize
 from rag.retriever import Retriever
 from rag.schemas import Mode, RagResponse, Source
@@ -169,7 +170,10 @@ class RagPipeline:
 
     # ---- 판단 + 답변 ----
     async def _decide(self, question: str, previous: list[str]) -> Decision:
-        retrieved = await self._retrieve(question, previous)
+        try:
+            retrieved = await self._retrieve(question, previous)
+        except Exception as e:
+            raise RetrievalError("검색 실패") from e
         candidates = [s for s in retrieved if s.score >= self.config.decision.min_score]
         result = await self.chain.ainvoke(
             {
@@ -189,9 +193,12 @@ class RagPipeline:
 
     @staticmethod
     def _check(parsed: LlmResult | None, candidates: list[Source]) -> Decision:
-        """LLM 결과를 그대로 믿지 않고, 이상하면 안전하게 거절(unknown)한다."""
+        """LLM 결과를 그대로 믿지 않고, 이상하면 안전하게 거절(unknown)한다.
+
+        응답을 해석하지 못한 것은 근거 부족이 아니라 장애이므로 unknown으로 바꾸지 않고 알린다.
+        """
         if parsed is None:
-            return Decision("unknown", [], "응답 파싱 실패")
+            raise ParseError("LLM 응답 파싱 실패")
         if parsed.verdict == "greeting":
             # 인사 답변에는 제품 사실이 없어야 한다. 숫자가 섞이면 지어낸 것으로 보고 고정 문구를 쓴다
             text = parsed.answer.strip()

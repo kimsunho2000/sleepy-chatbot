@@ -56,8 +56,10 @@ def print_summary(groups: dict[str, Runs]) -> None:
             continue
         metrics = [e2e_metrics(rows) for rows in runs]
         cells = " ".join(f"{mean_percent([m[key] for m in metrics]):>14s}" for key, _ in SHOWN)
-        latency = statistics.mean(m["latency_avg_ms"] for m in metrics) / 1000
-        print(f"{name:12s} {len(runs):>4d} {cells} {latency:>8.2f}")
+        # 모든 문항이 RAG 장애로 실패한 회차는 지연 평균이 없다
+        latencies = [m["latency_avg_ms"] for m in metrics if m["latency_avg_ms"] is not None]
+        latency = f"{statistics.mean(latencies) / 1000:>8.2f}" if latencies else f"{'-':>8s}"
+        print(f"{name:12s} {len(runs):>4d} {cells} {latency}")
 
 
 def print_failures(items: list[dict], groups: dict[str, Runs]) -> None:
