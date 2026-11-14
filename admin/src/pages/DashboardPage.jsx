@@ -107,6 +107,10 @@ export default function DashboardPage({ navigate }) {
   const [days, setDays] = useState('7');
   const data = useAsync(() => api.dashboard(periodRange(Number(days))), days);
   const d = data.data;
+  // API는 0건 사유까지 모든 키를 보내므로 실제로 일어난 사유만 보여 준다
+  const failedReasons = d
+    ? Object.entries(d.failed_by_reason).filter(([, count]) => count > 0)
+    : [];
 
   return (
     <>
@@ -163,7 +167,7 @@ export default function DashboardPage({ navigate }) {
                 tone="warn"
                 label="불확실 답변 비율"
                 value={formatRatio(d.uncertain_ratio)}
-                hint={`부분 답변 ${d.mode_counts.partial} · 답변 불가 ${d.mode_counts.unknown}`}
+                hint={`부분 답변 ${d.mode_counts.partial} · 답변 불가 ${d.mode_counts.unknown} (👎\u00a0제외)`}
               />
               <Kpi
                 icon="thumb"
@@ -236,9 +240,9 @@ export default function DashboardPage({ navigate }) {
                     </span>
                   ))}
                 </div>
-                {Object.keys(d.failed_by_reason).length ? (
+                {failedReasons.length ? (
                   <div className="breakdown">
-                    {Object.entries(d.failed_by_reason).map(([code, count]) => (
+                    {failedReasons.map(([code, count]) => (
                       <span key={code} className="badge tone-crit">
                         <Icon name="warning" /> {ERROR_CODE_LABEL[code] ?? code} {count}
                       </span>
