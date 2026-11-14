@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { ApiError, createChat, sendTurn } from '../api/client';
+import { ApiError, createChat, deleteFeedback, putFeedback, sendTurn } from '../api/client';
 
 // 오류 코드별 고객 안내 (Swagger error.code)
 const ERROR_TEXT = {
@@ -111,6 +111,7 @@ export function useChat() {
           mode: turn.mode,
           text: turn.answer,
           showContact: turn.show_contact,
+          feedback: turn.feedback,
         });
       } catch (error) {
         if (!isCurrent()) return;
@@ -140,6 +141,32 @@ export function useChat() {
 
   // 실패 후 다시 시도: 질문 말풍선을 다시 쌓지 않는다. 부모는 마지막 완료 turn 그대로다
   const retry = useCallback((question) => ask(question, { echo: false }), [ask]);
+
+  // 답변 평가. next가 null이면 취소한다. 실패하면 화면 상태를 바꾸지 않고 오류를 던진다
+  const sendFeedback = useCallback(
+    async (message, next) => {
+      const chat = chatRef.current;
+      // 초기화·만료로 대화 토큰이 없으면 서버도 받지 않으므로 보내지 않는다
+      if (!chat || chat.id !== message.chatId) {
+        throw new ApiError(404, 'not_found', '이전 대화의 답변이라 평가를 남길 수 없어요.');
+      }
+      const target = { chatId: chat.id, token: chat.token, turnId: message.turnId };
+      let saved;
+      try {
+        saved = next ? await putFeedback({ ...target, ...next }) : await deleteFeedback(target);
+      } catch (error) {
+        // 서버는 토큰이 맞지 않아도 404(not_found)를 준다. 화면의 turn은 모두 이 대화에서 받은 것이라
+        // turn을 못 찾는 404는 사실상 없으므로, 두 코드 모두 대화 만료로 본다
+        if (error instanceof ApiError && EXPIRED_CODES.has(error.code)) expireChat(chat.id);
+        throw error;
+      }
+      const feedback = saved ? { rating: saved.rating, reason: saved.reason ?? null } : null;
+      setMessages((prev) =>
+        prev.map((item) => (item.id === message.id ? { ...item, feedback } : item)),
+      );
+    },
+    [expireChat],
+  );
 
   // 상담사 연결: 실시간 상담이 아니라 담당자 문의로 이어 준다
   const requestAgent = useCallback(() => {
@@ -195,6 +222,7 @@ export function useChat() {
     reset,
     requestAgent,
     requestInquiry,
+    sendFeedback,
     ensureChat,
     expireChat,
     getInquiryContext,

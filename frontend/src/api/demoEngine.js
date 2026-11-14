@@ -76,6 +76,11 @@ export async function demoTurn({ chatId, question, parentTurnId }) {
   };
 }
 
+export async function demoFeedback({ rating, reason }) {
+  await wait(200);
+  return { rating, reason: rating === 'down' ? (reason ?? null) : null, updated_at: now() };
+}
+
 export async function demoInquiry() {
   await wait(500);
   return {
