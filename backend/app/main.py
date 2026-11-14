@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin_dashboard, admin_token, admin_turn, chat, inquiry
+from app.api import admin_dashboard, admin_inquiry, admin_token, admin_turn, chat, inquiry
 from app.core.config import AppSettings, get_settings
 from app.core.errors import register_error_handlers
 from app.core.rate_limit import LoginGuard, SlidingWindowLimiter
@@ -66,6 +66,7 @@ def create_app(settings: AppSettings | None = None, rag: RagRuntime | None = Non
     app.include_router(chat.router)
     app.include_router(inquiry.router)
     app.include_router(admin_token.router)
+    app.include_router(admin_inquiry.router)
     app.include_router(admin_turn.router)
     app.include_router(admin_dashboard.router)
     return app
