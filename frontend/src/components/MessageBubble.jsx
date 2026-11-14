@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import FeedbackBar from './FeedbackBar';
 import Icon from './Icon';
 import InquiryForm from './InquiryForm';
 
@@ -41,6 +42,8 @@ export default function MessageBubble({ message, chat, isLatest }) {
   const label = modeLabel && !message.text.trim().startsWith(modeLabel) ? modeLabel : null;
   // 다시 시도는 마지막 메시지에서만 보여 준다. 뒤에 다른 대화가 이어졌으면 의미가 없다
   const canRetry = Boolean(message.retryQuestion) && isLatest;
+  // 서버에 저장된 답변(turn)만 평가할 수 있다. 인사는 평가할 내용이 없어 뺀다
+  const canRate = Boolean(message.turnId) && message.mode !== 'greeting';
 
   return (
     <div className={`msg bot mode-${message.mode}`}>
@@ -50,6 +53,7 @@ export default function MessageBubble({ message, chat, isLatest }) {
       <div className="bot-text">
         {label && <span className="mode-label">{label}</span>}
         <p>{message.text}</p>
+        {canRate && <FeedbackBar message={message} chat={chat} />}
         {canRetry && waitSeconds > 0 && (
           <p className="wait-note">{waitSeconds}초 후에 다시 시도할 수 있어요.</p>
         )}
