@@ -1,0 +1,110 @@
+/* 관리자 화면 색상·서체 토큰. 출처: 관리자 목업(https://claude.ai/artifact/VECXqcLGZk7TxzaQPjZove)
+   처음에는 시스템 설정을 따르고, 사용자가 고르면 data-theme으로 고정한다 */
+:root {
+  --bg: #f3f5f8;
+  --surface: #ffffff;
+  --sunken: #f7f8fa;
+  --line: #e3e7ed;
+  --fg: #1f2733;
+  --muted: #6b7686;
+  --primary: #2f6fe4;
+  --primary-soft: #e8f0fd;
+  --on-primary: #ffffff;
+  --side: #1d2433;
+  --side-fg: #aab3c2;
+  --side-hover: #273043;
+  --side-active: #2f6fe4;
+  --side-strong: #ffffff;
+  --brand: #19b39c;
+  --ok: #1f8a4c;
+  --ok-soft: #e3f4ea;
+  --warn: #b26a00;
+  --warn-soft: #fff3dc;
+  --crit: #d64545;
+  --crit-soft: #fde8e8;
+  --info: #5b5fd6;
+  --info-soft: #ecedfc;
+  --shadow: 0 1px 2px rgb(20 30 50 / 6%);
+  --shadow-pop: 0 4px 12px rgb(0 0 0 / 15%);
+  --font-ui: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --font-display: 'Hahmlet', 'Nanum Myeongjo', serif;
+  --radius: 6px;
+  --radius-card: 8px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #11151c;
+    --surface: #191f29;
+    --sunken: #1f2632;
+    --line: #2a3240;
+    --fg: #e4e8ee;
+    --muted: #949fb0;
+    --primary: #5b8ff0;
+    --primary-soft: #1d2a44;
+    --side: #0c1016;
+    --side-fg: #8f99a8;
+    --side-hover: #1a212c;
+    --side-active: #3d74e0;
+    --brand: #2fc9b1;
+    --ok: #5fcf8a;
+    --ok-soft: #16301f;
+    --warn: #f0b04f;
+    --warn-soft: #3a2a10;
+    --crit: #f27b7b;
+    --crit-soft: #3d1c1c;
+    --info: #9a9df5;
+    --info-soft: #23244a;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #11151c;
+  --surface: #191f29;
+  --sunken: #1f2632;
+  --line: #2a3240;
+  --fg: #e4e8ee;
+  --muted: #949fb0;
+  --primary: #5b8ff0;
+  --primary-soft: #1d2a44;
+  --side: #0c1016;
+  --side-fg: #8f99a8;
+  --side-hover: #1a212c;
+  --side-active: #3d74e0;
+  --brand: #2fc9b1;
+  --ok: #5fcf8a;
+  --ok-soft: #16301f;
+  --warn: #f0b04f;
+  --warn-soft: #3a2a10;
+  --crit: #f27b7b;
+  --crit-soft: #3d1c1c;
+  --info: #9a9df5;
+  --info-soft: #23244a;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%);
+  color-scheme: dark;
+}
+
+/* 로그인 화면 전용: 챗봇 홈페이지(frontend/src/styles/tokens.css)의 밤 팔레트 */
+:root {
+  --night-walnut: #15110d;
+  --night-panel-top: #221b15;
+  --night-panel-bottom: #17120e;
+  --night-field: #0f0c0a;
+  --night-linen: #ede4d3;
+  --night-linen-2: #c4b7a2;
+  --night-linen-3: #9c8f7c;
+  --night-lamp: #e8b46a;
+  --night-lamp-hi: #f4cc8e;
+  --night-lamp-ink: #20150a;
+  --night-lamp-faint: rgb(232 180 106 / 6%);
+  --night-lamp-ring: rgb(232 180 106 / 14%);
+  --night-glow: rgb(232 180 106 / 10%);
+  --night-ember: rgb(58 38 20 / 55%);
+  --night-brass: rgb(184 147 90 / 34%);
+  --night-coral: #e58a7a;
+  --night-shadow: 0 24px 60px -24px rgb(0 0 0 / 80%);
+}
