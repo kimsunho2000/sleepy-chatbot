@@ -1,6 +1,6 @@
 """RAG 파이프라인: 검색 → LLM 1회(판단 + 답변) → 결과 검사 → 숫자 검증.
 
-LLM은 구조화 출력 한 번으로 판단 이유, 판단(answer/partial/unknown/offtopic, 선택적으로 greeting),
+LLM은 구조화 출력 한 번으로 판단 이유, 판단(answer/partial/unknown/offtopic, 선택적으로 greeting·handoff),
 근거 FAQ ID, 답변을 함께 돌려준다. 판단과 답변을 따로 부르면 비용과 지연이 두 배가 되기 때문이다.
 답변이 JSON 필드로 한 번에 오므로 스트리밍은 하지 않는다.
 """
@@ -66,12 +66,45 @@ class LlmResultWithGreeting(LlmResult):
     )
 
 
+class LlmResultWithHandoff(BaseModel):
+    """상담 연결 모드를 쓰는 프롬프트용 (인사 모드 포함). 필드 순서가 생성 순서라 따로 정의한다."""
+
+    reason: str = Field(description="질문의 핵심과 FAQ가 그 핵심을 다루는지에 대한 한 문장")
+    verdict: Literal["answer", "partial", "unknown", "offtopic", "greeting", "handoff"] = Field(
+        description="FAQ만으로 질문에 답할 수 있는지에 대한 판단. "
+        "제품 질문 없이 불만만 말하거나 담당자 연결을 원하면 handoff"
+    )
+    needs_agent: bool = Field(description="고객이 불만을 표현했거나 담당자 연결을 원하면 true")
+    faq_ids: list[str] = Field(description="답변 근거로 쓸 FAQ ID. unknown, offtopic이면 빈 목록")
+    answer: str = Field(description="고객에게 보여 줄 답변. unknown, offtopic이면 빈 문자열")
+
+
+# 상담 연결 공감 문장의 최대 길이. 길어지면 사과 외의 내용을 지어낼 위험이 커진다
+HANDOFF_EMPATHY_MAX_CHARS = 120
+# 상담 연결은 API에 unknown으로 나가므로, 관리자 로그에서 이 접두사로 구별한다
+HANDOFF_REASON_PREFIX = "상담 연결 요청: "
+
+
+def select_schema(prompts: dict[str, str]) -> type[BaseModel]:
+    """프롬프트 파일에 있는 고정 문구로 LLM 출력 스키마를 고른다. 키가 없으면 기존 판단 범위를 지킨다."""
+    # 상담 연결 모드는 고정 문구 두 개(공감 뒤에 붙일 안내, 전체 대체 문구)가 있을 때만 켠다
+    if {"handoff_message", "handoff_guide"} <= prompts.keys():
+        return LlmResultWithHandoff
+    if "greeting_message" in prompts:
+        return LlmResultWithGreeting
+    return LlmResult
+
+
 @dataclass
 class Decision:
     mode: Mode
     sources: list[Source]
     reason: str
     answer: str | None = None
+    # 상담 연결: 고객에게는 unknown + 문의 카드로 보이고, 문구만 상담 연결 안내를 쓴다
+    handoff: bool = False
+    # 불만·연결 요청이 제품 질문과 함께 온 경우. 답변은 하되 문의 카드도 띄운다
+    needs_agent: bool = False
     prompt_tokens: int = 0
     completion_tokens: int = 0
     retrieved: list[Source] = field(default_factory=list)
@@ -139,10 +172,8 @@ class RagPipeline:
             [("system", self.prompts["system"]), ("human", self.prompts["human"])]
         )
         # include_raw: 파싱 결과와 함께 원본 메시지(토큰 사용량)도 받는다
-        self.greeting_enabled = "greeting_message" in self.prompts
-        schema = LlmResultWithGreeting if self.greeting_enabled else LlmResult
         self.chain = prompt | llm.with_structured_output(
-            schema, method="json_schema", strict=True, include_raw=True
+            select_schema(self.prompts), method="json_schema", strict=True, include_raw=True
         )
 
     # ---- 검색 ----
@@ -192,21 +223,35 @@ class RagPipeline:
         return decision
 
     @staticmethod
-    def _check(parsed: LlmResult | None, candidates: list[Source]) -> Decision:
+    def _check(
+        parsed: LlmResult | LlmResultWithHandoff | None, candidates: list[Source]
+    ) -> Decision:
         """LLM 결과를 그대로 믿지 않고, 이상하면 안전하게 거절(unknown)한다.
 
         응답을 해석하지 못한 것은 근거 부족이 아니라 장애이므로 unknown으로 바꾸지 않고 알린다.
         """
         if parsed is None:
             raise ParseError("LLM 응답 파싱 실패")
+        needs_agent = getattr(parsed, "needs_agent", False)
+        if parsed.verdict == "handoff":
+            # 공감 문장에는 제품 사실도 연락처도 없어야 한다. 숫자·@가 섞이거나 길면 고정 문구만 쓴다
+            text = parsed.answer.strip()
+            is_safe = (
+                text
+                and len(text) <= HANDOFF_EMPATHY_MAX_CHARS
+                and not NUMBER_PATTERN.search(text)
+                and "@" not in text
+            )
+            reason = f"{HANDOFF_REASON_PREFIX}{parsed.reason}"
+            return Decision("unknown", [], reason, text if is_safe else None, handoff=True)
         if parsed.verdict == "greeting":
             # 인사 답변에는 제품 사실이 없어야 한다. 숫자가 섞이면 지어낸 것으로 보고 고정 문구를 쓴다
             text = parsed.answer.strip()
             safe = text if text and not NUMBER_PATTERN.search(text) else None
-            return Decision("greeting", [], parsed.reason, safe)
+            return Decision("greeting", [], parsed.reason, safe, needs_agent=needs_agent)
         if parsed.verdict in ("unknown", "offtopic"):
             # 거절 문구는 LLM 답변이 아니라 프롬프트 파일의 고정 문구를 쓴다
-            return Decision(parsed.verdict, [], parsed.reason)
+            return Decision(parsed.verdict, [], parsed.reason, needs_agent=needs_agent)
         by_id = {s.faq_id: s for s in candidates}
         cited = [by_id[i] for i in parsed.faq_ids if i in by_id]
         if not cited:
@@ -214,7 +259,9 @@ class RagPipeline:
             return Decision("unknown", [], "인용한 FAQ가 검색 결과에 없음")
         if not parsed.answer.strip():
             return Decision("unknown", [], "답변 비어 있음")
-        return Decision(parsed.verdict, cited, parsed.reason, parsed.answer.strip())
+        return Decision(
+            parsed.verdict, cited, parsed.reason, parsed.answer.strip(), needs_agent=needs_agent
+        )
 
     def _fixed_message(self, mode: Mode) -> str:
         key = {"offtopic": "offtopic_message", "greeting": "greeting_message"}.get(
@@ -222,13 +269,22 @@ class RagPipeline:
         )
         return self.prompts[key].strip()
 
+    def _handoff_message(self, empathy: str | None) -> str:
+        """LLM의 공감 문장 뒤에 고정 안내를 붙인다. 공감 문장을 못 쓰면 고정 문구 전체를 쓴다."""
+        if not empathy:
+            return self.prompts["handoff_message"].strip()
+        return f"{empathy}\n{self.prompts['handoff_guide'].strip()}"
+
     # ---- 전체 ----
     async def aanswer(self, question: str, history: list[str] | None = None) -> RagResponse:
         start = time.perf_counter()
         turns = self.config.retrieval.history_turns
         previous = (history or [])[-turns:] if turns else []
         decision = await self._decide(question, previous)
-        answer = decision.answer or self._fixed_message(decision.mode)
+        if decision.handoff:
+            answer = self._handoff_message(decision.answer)
+        else:
+            answer = decision.answer or self._fixed_message(decision.mode)
 
         if self.config.decision.verify_numbers and decision.mode in ("answer", "partial"):
             # 연락처의 숫자(예: 이메일 주소)는 설정에서 온 것이므로 검증에서 뺀다
@@ -248,7 +304,9 @@ class RagPipeline:
             mode=decision.mode,
             answer=answer,
             sources=decision.sources,
-            show_contact=decision.mode in ("partial", "unknown") or support_needed,
+            show_contact=decision.mode in ("partial", "unknown")
+            or support_needed
+            or decision.needs_agent,
             reason=decision.reason,
             retrieved_ids=[s.faq_id for s in decision.retrieved],
             retrieved_scores=[round(s.score, 4) for s in decision.retrieved],
