@@ -15,6 +15,7 @@ from app.core.security import hash_ip
 from app.schemas.admin import AdminIdentity
 from app.services.admin_auth_service import AdminAuthService
 from app.services.admin_inquiry_service import AdminInquiryService
+from app.services.admin_log_service import AdminLogService
 from app.services.chat_service import ChatService
 from app.services.inquiry_service import InquiryService
 
@@ -126,3 +127,10 @@ async def require_admin(
 
 
 AdminDep = Annotated[AdminIdentity, Depends(require_admin)]
+
+
+async def get_admin_log_service(session: SessionDep, settings: SettingsDep) -> AdminLogService:
+    return AdminLogService(session, settings)
+
+
+AdminLogServiceDep = Annotated[AdminLogService, Depends(get_admin_log_service)]
