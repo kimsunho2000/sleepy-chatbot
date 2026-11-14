@@ -65,6 +65,10 @@ class AppSettings(DatabaseSettings):
     turn_global_per_day: int = 2000
     inquiry_per_ip_per_hour: int = 5
 
+    # 예상 비용 단가(USD, 100만 토큰당). 정하지 않으면 관리자 화면의 예상 비용이 null이다
+    llm_input_price_per_1m_tokens: float | None = Field(default=None, ge=0)
+    llm_output_price_per_1m_tokens: float | None = Field(default=None, ge=0)
+
 
 @lru_cache
 def get_settings() -> AppSettings:
