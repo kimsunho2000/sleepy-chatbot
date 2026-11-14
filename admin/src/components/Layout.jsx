@@ -15,13 +15,16 @@ export default function Layout({ page, admin, unreadCount, theme, onSignOut, chi
   return (
     <div className="app">
       <aside className="side">
+        {/* 로그인 화면·고객 챗봇과 같은 SLEEPY 글자 로고 */}
         <div className="brand">
-          <span className="mark" aria-hidden="true">
-            S
+          <span className="brand-moon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" />
+            </svg>
           </span>
           <div>
-            <b>Sleeby Admin</b>
-            <span>AI 상담 챗봇</span>
+            <b className="brand-wordmark">SLEEPY</b>
+            <span>슬리비 상담 관리</span>
           </div>
         </div>
         <div className="nav-label">운영</div>
@@ -41,17 +44,7 @@ export default function Layout({ page, admin, unreadCount, theme, onSignOut, chi
               )}
             </a>
           ))}
-          <span className="soon" title="나중에 추가 예정">
-            <Icon name="db" />
-            <span className="grow">FAQ 관리</span>
-            <span className="tag">예정</span>
-          </span>
         </nav>
-        <div className="side-note">
-          <b>나중에 넣을 것</b>
-          <span>FAQ 관리: FAQ 추가·수정·삭제</span>
-          <span>문의 답장: 회사 확인 후 결정</span>
-        </div>
       </aside>
       <div className="wrap">
         <header className="topbar">
