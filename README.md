@@ -60,6 +60,18 @@
 **사전 요구사항:** Python 3.11+, [uv](https://docs.astral.sh/uv/), Node.js, Docker(로컬 DB), OpenAI API 키.
 명령은 하나씩 실행하세요(Windows PowerShell 5.1에서는 `&&`가 동작하지 않습니다).
 
+### 빠른 실행 요약
+
+처음 한 번만 아래 1~3단계(복제, 환경변수, 백엔드 준비)를 마치면, 이후에는 터미널 세 개에서 다음 명령만 실행합니다.
+
+| 터미널 | 위치 | 명령 | 열리는 주소 |
+|---|---|---|---|
+| 백엔드 | `backend/` | `uv run uvicorn app.main:create_app --factory --reload` | http://localhost:8000 (`/docs`, `/health`) |
+| 챗봇 화면 | `frontend/` | `npm run dev` | http://localhost:5173 |
+| 관리자 화면 | `admin/` | `npm run dev` | http://localhost:5175 |
+
+DB가 꺼져 있으면 `backend/`에서 `docker compose up -d`를 먼저 실행합니다. 두 화면이 백엔드를 부르려면 `.env`의 `CORS_ORIGINS`에 위 두 화면 주소(`http://localhost:5173`, `http://localhost:5175`)가 들어 있어야 합니다. `.env.example`의 기본값 그대로면 됩니다.
+
 ### 1. 저장소 복제
 
 ```bash
@@ -141,6 +153,22 @@ http://localhost:5175 에서 열립니다. 백엔드 없이 명세 모양의 가
 ```bash
 curl -X POST http://localhost:8000/api/chats
 ```
+
+### 종료와 다시 시작
+
+- 각 터미널에서 `Ctrl+C`로 서버를 멈춥니다.
+- 로컬 DB는 `backend/`에서 `docker compose down`으로 멈춥니다(데이터는 Docker 볼륨에 남습니다).
+- 다시 시작할 때는 위 "빠른 실행 요약"의 명령만 다시 실행하면 됩니다. 색인은 FAQ 데이터나 임베딩 모델이 바뀔 때만 다시 만듭니다.
+
+### 막혔을 때 확인할 것
+
+| 증상 | 확인할 것 |
+|---|---|
+| 서버 시작 시 `IndexOutdatedError`("인덱서를 다시 실행하세요") | 색인이 없거나 데이터·임베딩 모델과 맞지 않습니다. `uv run python -m rag.indexer --config configs/rag/default.yaml`을 다시 실행합니다 |
+| 서버 시작 시 OpenAI `403`(모델 접근 권한 없음) | `configs/rag/default.yaml`에 적힌 모델을 OpenAI 프로젝트에서 쓸 수 있어야 합니다. 키의 프로젝트 권한을 확인합니다 |
+| 화면에 "서버와 연결하지 못했어요" 또는 브라우저 콘솔의 CORS 오류 | 백엔드가 떠 있는지, `.env`의 `CORS_ORIGINS`에 화면 주소가 있는지 확인합니다. 값을 바꿨다면 백엔드를 다시 시작합니다 |
+| DB 연결 오류 | `docker compose up -d`로 DB가 켜져 있는지, `DATABASE_URL`이 맞는지, 주소에 `sslmode`가 없는지 확인합니다 |
+| 관리자 화면에서 "API 주소가 설정되지 않았어요" | 개발 서버(`npm run dev`)가 아닌 빌드에서는 `VITE_API_BASE_URL`을 지정해야 합니다 |
 
 ## 사용 방법
 
