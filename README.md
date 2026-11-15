@@ -10,7 +10,6 @@
 - **해결하려는 문제:** 고객이 제품 특징, 사용 방법, 유의사항, 구매 방법을 물을 때 담당자가 매번 답하지 않아도 되게 하고, AI가 자료에 없는 내용을 지어내지 않게 합니다.
 - **주요 사용자:** 슬리비 홈페이지를 찾는 고객(챗봇 사용), 문의를 확인하는 담당자(관리자 화면 사용).
 - **RAG란?** 질문과 관련된 자료를 먼저 검색(Retrieval)하고, 찾은 자료를 근거로 답변을 생성(Generation)하는 방식입니다.
-- **데모/스크린샷:** [입력 필요: 스크린샷 또는 배포된 데모 링크]
 
 ## 주요 기능
 
@@ -36,7 +35,7 @@
 | RAG | LangChain, Qdrant(로컬 모드 또는 Qdrant Cloud) | 임베딩 + 키워드 검색, 답변 판단과 생성 |
 | 모델 | OpenAI Embeddings, OpenAI GPT | 모델 이름은 [`configs/rag/default.yaml`](configs/rag/default.yaml)에 명시 |
 | 업무 DB | PostgreSQL | 대화·문의·로그 저장 (운영 Supabase, 로컬 Docker) |
-| 배포 | 백엔드: 루트 [`Dockerfile`](Dockerfile)(Cloud Run 배포 예시가 주석에 있음), 프론트엔드·관리자 화면: Vercel(주석 기준) | [입력 필요: 실제 배포 주소와 확정 여부] |
+| 배포 | 백엔드: 루트 [`Dockerfile`](Dockerfile)(Cloud Run 배포 예시 포함), 프론트엔드·관리자 화면: Vercel | 서비스 배포 |
 
 버전 기준은 [`backend/pyproject.toml`](backend/pyproject.toml)과 [`frontend/package.json`](frontend/package.json)입니다.
 
@@ -269,7 +268,6 @@ npm run build
 - 브랜치는 `main`에서 `type/작업내용`으로 만들고, Pull Request로만 `main`에 반영합니다. `main`에 직접 커밋·push하지 않습니다.
 - 커밋은 Conventional Commits(`type(scope): 요약`)를 따릅니다.
 - 코드 스타일, 커밋·PR 작성법은 팀에 공유된 `CONVENTION.md`를 따릅니다(저장소에 포함되지 않는 팀 공유 파일).
-- 이슈와 코드 리뷰 절차: [입력 필요: 팀 합의 내용]
 
 ## 보안과 자료 관리
 
@@ -279,8 +277,3 @@ npm run build
 - 비공개 최종 평가 질문과 정답은 저장소에 두지 않습니다.
 - 실제 고객 데이터는 사용하지 않고 데모 데이터만 씁니다.
 - 모델 학습·파인튜닝, 상담원 배정·티켓 시스템, 상용 수준의 인증·보안은 범위에 포함하지 않습니다.
-
-## 라이선스와 문의
-
-- 라이선스: [입력 필요: 저장소에 LICENSE 파일이 없습니다. 팀에서 정한 뒤 추가하세요]
-- 프로젝트 관리자·문의 경로: [입력 필요: 담당자 또는 연락 채널]
