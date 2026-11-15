@@ -67,19 +67,19 @@ def build_index(config: RagConfig, settings: Settings) -> int:
         for item in items
     ]
 
+    # 임베딩 API 키·모델 오류는 기존 인덱스를 지우기 전에 드러나게 한다
+    dim = len(embeddings.embed_query("dimension check"))
     if not settings.qdrant_url:
         # 로컬 모드는 컬렉션을 지웠다 다시 만들어도 예전 포인트가 남아(qdrant-client 1.20)
         # 다시 인덱싱할 때마다 FAQ가 중복된다. 폴더째 지우고 새로 만든다
         shutil.rmtree(config.qdrant_path, ignore_errors=True)
     client = make_qdrant_client(config, settings)
     try:
-        dim = len(embeddings.embed_query("dimension check"))
         if client.collection_exists(config.collection_name):
             client.delete_collection(config.collection_name)
         client.create_collection(
             config.collection_name,
             vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
-            metadata={SIGNATURE_KEY: index_signature(config)},
         )
         store = QdrantVectorStore(
             client=client, collection_name=config.collection_name, embedding=embeddings
@@ -88,6 +88,12 @@ def build_index(config: RagConfig, settings: Settings) -> int:
         ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, item.faq_id)) for item in items]
         store.add_texts(texts, metadatas=metadatas, ids=ids)
         count = client.count(config.collection_name).count
+        if count != len(items):
+            raise RuntimeError(f"포인트 수가 FAQ 수와 다릅니다: {count} != {len(items)}")
+        # 확인값은 적재가 끝난 뒤에 남긴다. 도중에 실패한 인덱스를 서버가 정상으로 받지 않게 한다
+        client.update_collection(
+            config.collection_name, metadata={SIGNATURE_KEY: index_signature(config)}
+        )
     finally:
         client.close()
     return count
