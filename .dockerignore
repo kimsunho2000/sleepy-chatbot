@@ -11,3 +11,10 @@ backend/compose.yaml
 **/__pycache__/
 **/.pytest_cache/
 **/.ruff_cache/
+
+# 로컬 전용 실험 설정·프롬프트·용어집과 테스트 질문 파일은 이미지에 넣지 않는다
+configs/rag/v*
+backend/rag/prompts/v*
+backend/rag/glossaries/v*
+data/*.md
+**/.DS_Store
