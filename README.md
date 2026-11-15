@@ -11,6 +11,22 @@
 - **주요 사용자:** 슬리비 홈페이지를 찾는 고객(챗봇 사용), 문의를 확인하는 담당자(관리자 화면 사용).
 - **RAG란?** 질문과 관련된 자료를 먼저 검색(Retrieval)하고, 찾은 자료를 근거로 답변을 생성(Generation)하는 방식입니다.
 
+## 데모 화면
+
+> 시연 화면입니다. 표시된 문의와 수치는 예시 데이터이며 실제 고객 데이터가 아닙니다.
+
+**홈페이지와 챗봇 위젯**: 분야를 고르거나 추천 질문을 눌러 바로 물어볼 수 있습니다.
+
+![홈페이지와 챗봇 위젯](assets/screenshots/demo-home-widget.jpg)
+
+**답변과 담당자 문의 접수(모바일)**: 답변 아래 "담당자에게 문의 남기기"를 누르고, 이름·이메일·내용을 입력하면 접수 번호를 안내합니다. 문의에는 지금까지의 대화가 함께 전달됩니다.
+
+![답변과 담당자 문의 접수 3단계](assets/screenshots/demo-inquiry-flow.jpg)
+
+**관리자 대시보드**: 질문 수, 평균 응답 시간, 답변 유형, 고객 평가, 많이 참고된 FAQ, 예상 AI 비용을 한 화면에서 봅니다.
+
+![관리자 대시보드](assets/screenshots/demo-admin-dashboard.jpg)
+
 ## 주요 기능
 
 **구현됨**
@@ -166,6 +182,7 @@ curl -X POST http://localhost:8000/api/chats/<chat_id>/turns \
 sleepy-chatbot/
 ├── frontend/        # React 챗봇 UI
 ├── admin/           # React 관리자 화면
+├── assets/          # README에 쓰는 데모 화면 이미지
 ├── backend/
 │   ├── app/         # FastAPI: api/ services/ repositories/ schemas/ core/ db/
 │   ├── rag/         # RAG 모듈 (prompts/ 에 시스템 프롬프트)
