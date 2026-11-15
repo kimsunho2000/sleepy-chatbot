@@ -219,11 +219,13 @@ export default function Landing({ onAsk, onOpenChat }) {
 
   return (
     <div className="landing">
-      <p className="demo-bar">
-        {IS_DEMO
-          ? '챗봇 시연용 데모 · 실제 슬리피 홈페이지가 아니며, 답변은 임시 자료 기반이고 문의는 실제로 전송되지 않아요'
-          : '챗봇 시연용 페이지 · 실제 슬리피 홈페이지가 아니에요'}
-      </p>
+      {/* 백엔드 없는 데모 빌드는 답변·문의가 실제가 아니라서 안내를 남긴다 */}
+      {IS_DEMO && (
+        <p className="demo-bar">
+          챗봇 시연용 데모 · 실제 슬리피 홈페이지가 아니며, 답변은 임시 자료 기반이고 문의는 실제로
+          전송되지 않아요
+        </p>
+      )}
 
       <header className="site-header">
         <div className="wrap">
