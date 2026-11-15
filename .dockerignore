@@ -1,0 +1,13 @@
+# 이미지에는 백엔드 코드와 RAG가 읽는 configs/·data/만 넣는다 (.env, docs/ 등은 제외)
+*
+!backend/
+!configs/
+!data/
+
+backend/.venv/
+backend/tests/
+backend/db-init/
+backend/compose.yaml
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
