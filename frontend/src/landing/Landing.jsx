@@ -539,7 +539,7 @@ export default function Landing({ onAsk, onOpenChat }) {
         <div className="wrap">
           <span className="wordmark">SLEEPY</span>
           <p>SLEEPY는 양이성 음향을 활용한 디지털 귀마개 슬리비(SLEEBY)를 만듭니다.</p>
-          <p>이 페이지는 챗봇 시연용 데모이며 실제 서비스가 아닙니다.</p>
+          {IS_DEMO && <p>이 페이지는 챗봇 시연용 데모이며 실제 서비스가 아닙니다.</p>}
         </div>
       </footer>
     </div>
