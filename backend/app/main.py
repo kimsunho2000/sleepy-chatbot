@@ -14,6 +14,7 @@ from app.api import (
     admin_turn,
     admin_unanswered,
     chat,
+    health,
     inquiry,
 )
 from app.core.config import AppSettings, get_settings
@@ -71,6 +72,7 @@ def create_app(settings: AppSettings | None = None, rag: RagRuntime | None = Non
         expose_headers=["Retry-After"],
     )
     register_error_handlers(app)
+    app.include_router(health.router)
     app.include_router(chat.router)
     app.include_router(inquiry.router)
     app.include_router(admin_token.router)

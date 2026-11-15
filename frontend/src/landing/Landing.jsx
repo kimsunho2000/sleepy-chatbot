@@ -41,8 +41,6 @@ const NAV = [
   ['#about', '회사 소개'],
   ['#tech', '기술'],
   ['#product', '제품'],
-  ['#/chat', '챗봇 단독 화면'],
-  ['#admin', '관리'],
 ];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -86,18 +84,10 @@ export default function Landing({ onAsk, onOpenChat }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifyMessage, setNotifyMessage] = useState('');
-  const [toast, setToast] = useState('');
   const nightRef = useRef(null);
   const scopeRefs = useRef([]);
   const logRef = useRef(null);
   const audioRef = useRef({ ctx: null, nodes: null, raf: 0, stopTimer: 0, phase: 0 });
-  const toastTimer = useRef(0);
-
-  const showToast = (text) => {
-    setToast(text);
-    clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(''), 2600);
-  };
 
   // 창밖 도시와 소리 파형은 캔버스로 그리고, 창 크기가 바뀌면 다시 그린다
   useEffect(() => {
@@ -154,11 +144,10 @@ export default function Landing({ onAsk, onOpenChat }) {
     setIsPlaying(false);
   };
 
-  // 페이지를 떠나면 시연음과 알림 타이머를 정리한다
+  // 페이지를 떠나면 시연음을 정리한다
   useEffect(
     () => () => {
       const audio = audioRef.current;
-      clearTimeout(toastTimer.current);
       clearTimeout(audio.stopTimer);
       cancelAnimationFrame(audio.raf);
       audio.ctx?.close();
@@ -220,27 +209,23 @@ export default function Landing({ onAsk, onOpenChat }) {
     setNotifyEmail('');
   };
 
-  const onNavClick = (event, href) => {
-    setIsMenuOpen(false);
-    if (href === '#admin') {
-      event.preventDefault();
-      showToast('관리 화면은 데모에서 준비 중이에요');
-    }
-  };
+  const onNavClick = () => setIsMenuOpen(false);
 
   const navLinks = NAV.map(([href, label]) => (
-    <a key={href} href={href} onClick={(event) => onNavClick(event, href)}>
+    <a key={href} href={href} onClick={onNavClick}>
       {label}
     </a>
   ));
 
   return (
     <div className="landing">
-      <p className="demo-bar">
-        {IS_DEMO
-          ? '챗봇 시연용 데모 · 실제 슬리피 홈페이지가 아니며, 답변은 임시 자료 기반이고 문의는 실제로 전송되지 않아요'
-          : '챗봇 시연용 페이지 · 실제 슬리피 홈페이지가 아니에요'}
-      </p>
+      {/* 백엔드 없는 데모 빌드는 답변·문의가 실제가 아니라서 안내를 남긴다 */}
+      {IS_DEMO && (
+        <p className="demo-bar">
+          챗봇 시연용 데모 · 실제 슬리피 홈페이지가 아니며, 답변은 임시 자료 기반이고 문의는 실제로
+          전송되지 않아요
+        </p>
+      )}
 
       <header className="site-header">
         <div className="wrap">
@@ -554,13 +539,9 @@ export default function Landing({ onAsk, onOpenChat }) {
         <div className="wrap">
           <span className="wordmark">SLEEPY</span>
           <p>SLEEPY는 양이성 음향을 활용한 디지털 귀마개 슬리비(SLEEBY)를 만듭니다.</p>
-          <p>이 페이지는 챗봇 시연용 데모이며 실제 서비스가 아닙니다.</p>
+          {IS_DEMO && <p>이 페이지는 챗봇 시연용 데모이며 실제 서비스가 아닙니다.</p>}
         </div>
       </footer>
-
-      <div className={`lp-toast ${toast ? 'is-on' : ''}`} role="status" aria-live="polite">
-        {toast}
-      </div>
     </div>
   );
 }

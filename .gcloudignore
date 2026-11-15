@@ -1,0 +1,26 @@
+# gcloud run deploy --source 때 Cloud Build로 올리는 파일. .dockerignore와 같이 이미지에 필요한 것만 남긴다.
+# 이 파일이 없으면 .env·docs/·.qdrant/까지 업로드 버킷에 올라간다.
+*
+!Dockerfile
+!.dockerignore
+!backend/
+!backend/**
+!configs/
+!configs/**
+!data/
+!data/**
+
+backend/.venv/
+backend/tests/
+backend/db-init/
+backend/compose.yaml
+**/__pycache__/
+**/.pytest_cache/
+**/.ruff_cache/
+
+# 로컬 전용 실험 설정·프롬프트·용어집과 테스트 질문 파일은 이미지에 넣지 않는다
+configs/rag/v*
+backend/rag/prompts/v*
+backend/rag/glossaries/v*
+data/*.md
+**/.DS_Store

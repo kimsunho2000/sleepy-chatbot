@@ -17,6 +17,7 @@ from app.services.admin_unanswered_service import period
 from rag.data_loader import load_faq
 from rag.errors import ParseError, RetrievalError
 from rag.glossary import normalize
+from rag.indexer import index_signature
 from rag.pipeline import (
     Decision,
     LlmResult,
@@ -205,3 +206,16 @@ def test_faq_loader_rejects_reserved_id(tmp_path: Path) -> None:
     path.write_text(json.dumps([item]), encoding="utf-8")
     with pytest.raises(ValueError, match="예약된"):
         load_faq(path)
+
+
+def test_index_signature_ignores_line_endings(tmp_path: Path) -> None:
+    # Windows 체크아웃(CRLF)에서 만든 인덱스를 Linux 서버(LF)가 같은 데이터로 봐야 한다
+    lf, crlf = tmp_path / "lf.json", tmp_path / "crlf.json"
+    lf.write_bytes(b'[\n  {"q": 1}\n]\n')
+    crlf.write_bytes(b'[\r\n  {"q": 1}\r\n]\r\n')
+    embedding = SimpleNamespace(model="m")
+    sig_lf = index_signature(SimpleNamespace(data_paths=[lf], embedding=embedding))
+    sig_crlf = index_signature(SimpleNamespace(data_paths=[crlf], embedding=embedding))
+    assert sig_lf == sig_crlf
+    other = SimpleNamespace(data_paths=[lf], embedding=SimpleNamespace(model="other"))
+    assert index_signature(other) != sig_lf

@@ -4,14 +4,12 @@ langchain-qdrant에는 native async가 없으므로 동기 함수로 두고,
 비동기 코드에서는 asyncio.to_thread로 감싸서 호출한다.
 """
 
-import json
-
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 
 from rag.config import RagConfig, Settings
 from rag.data_loader import load_confirmed_items
-from rag.indexer import META_FILE, build_embeddings, index_signature
+from rag.indexer import SIGNATURE_KEY, build_embeddings, index_signature, make_qdrant_client
 from rag.keyword import KeywordIndex
 from rag.schemas import Source
 
@@ -22,9 +20,13 @@ class IndexOutdatedError(RuntimeError):
 
 class Retriever:
     def __init__(self, config: RagConfig, settings: Settings) -> None:
-        self._check_index(config)
         self.config = config
-        self.client = QdrantClient(path=str(config.qdrant_path))
+        self.client = make_qdrant_client(config, settings)
+        try:
+            self._check_index(self.client, config)
+        except Exception:
+            self.client.close()
+            raise
         self.store = QdrantVectorStore(
             client=self.client,
             collection_name=config.collection_name,
@@ -40,15 +42,14 @@ class Retriever:
         )
 
     @staticmethod
-    def _check_index(config: RagConfig) -> None:
-        meta_path = config.qdrant_path / META_FILE
-        if not meta_path.exists():
+    def _check_index(client: QdrantClient, config: RagConfig) -> None:
+        if not client.collection_exists(config.collection_name):
             raise IndexOutdatedError(
                 "인덱스가 없습니다. 먼저 실행하세요: "
                 f"uv run python -m rag.indexer --config <설정 파일> (name={config.name})"
             )
-        saved = json.loads(meta_path.read_text(encoding="utf-8"))
-        if saved != index_signature(config):
+        metadata = client.get_collection(config.collection_name).config.metadata or {}
+        if metadata.get(SIGNATURE_KEY) != index_signature(config):
             # FAQ가 바뀌었는데 예전 인덱스로 답하는 것을 막는다
             raise IndexOutdatedError(
                 f"데이터나 임베딩 모델이 바뀌었습니다. 인덱서를 다시 실행하세요 (name={config.name})"

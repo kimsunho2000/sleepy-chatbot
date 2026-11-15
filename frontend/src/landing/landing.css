@@ -937,25 +937,3 @@
     scroll-behavior: auto !important;
   }
 }
-
-.landing .lp-toast {
-  position: fixed;
-  left: 50%;
-  bottom: 92px;
-  z-index: 60;
-  padding: 12px 20px;
-  border: 1px solid var(--lp-brass);
-  border-radius: 999px;
-  background: var(--lp-wood);
-  font-size: 14px;
-  translate: -50% 12px;
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.3s,
-    translate 0.4s var(--lp-ease);
-}
-.landing .lp-toast.is-on {
-  opacity: 1;
-  translate: -50% 0;
-}

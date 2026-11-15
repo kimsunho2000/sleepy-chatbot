@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     )
 
     openai_api_key: SecretStr
+    # 비우면 로컬 모드(.qdrant/{설정 이름})를 쓴다. 배포 서버는 Qdrant Cloud 주소를 넣는다
+    qdrant_url: str | None = None
+    qdrant_api_key: SecretStr | None = None
 
 
 class EmbeddingConfig(BaseModel):
