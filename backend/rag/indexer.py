@@ -10,6 +10,8 @@ FAQ 하나를 "질문 + 답변" 텍스트 하나로 임베딩한다 (FAQ 1개 = 
 import argparse
 import hashlib
 import json
+import shutil
+import uuid
 from pathlib import Path
 
 from langchain_openai import OpenAIEmbeddings
@@ -53,6 +55,9 @@ def build_index(config: RagConfig, settings: Settings) -> int:
     ]
 
     path: Path = config.qdrant_path
+    # 로컬 모드는 컬렉션을 지웠다 다시 만들어도 예전 포인트가 남아(qdrant-client 1.20)
+    # 다시 인덱싱할 때마다 FAQ가 중복된다. 폴더째 지우고 새로 만든다
+    shutil.rmtree(path, ignore_errors=True)
     path.mkdir(parents=True, exist_ok=True)
     client = QdrantClient(path=str(path))
     try:
@@ -66,7 +71,9 @@ def build_index(config: RagConfig, settings: Settings) -> int:
         store = QdrantVectorStore(
             client=client, collection_name=config.collection_name, embedding=embeddings
         )
-        store.add_texts(texts, metadatas=metadatas)
+        # FAQ ID로 포인트 ID를 정해, 같은 FAQ를 다시 올리면 새로 늘지 않고 덮어쓰게 한다
+        ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, item.faq_id)) for item in items]
+        store.add_texts(texts, metadatas=metadatas, ids=ids)
         count = client.count(config.collection_name).count
     finally:
         client.close()
